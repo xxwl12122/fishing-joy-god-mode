@@ -82,13 +82,28 @@ async function main() {
         });
     }
 
-    console.log(`Release ready (id: ${release.id}). Uploading asset...`);
+    console.log(`Release ready (id: ${release.id}). Checking existing assets...`);
+    if (release.assets && release.assets.length > 0) {
+        for (const asset of release.assets) {
+            if (asset.name === zipName) {
+                console.log(`Deleting existing release asset ${asset.name} (id: ${asset.id})...`);
+                try {
+                    curlApi(`https://api.github.com/repos/${owner}/${repo}/releases/assets/${asset.id}`, 'DELETE');
+                    console.log(`Old asset deleted.`);
+                } catch (e) {
+                    console.warn(`Failed to delete old asset:`, e.message);
+                }
+            }
+        }
+    }
+
+    console.log(`Uploading asset ${zipName}...`);
     const uploadUrl = `https://uploads.github.com/repos/${owner}/${repo}/releases/${release.id}/assets?name=${encodeURIComponent(zipName)}`;
 
     const curlUploadCmd = `curl.exe --proxy "http://127.0.0.1:7897" -s -S -X POST -H "Authorization: Bearer ${token}" -H "Content-Type: application/zip" -H "Accept: application/vnd.github.v3+json" -T "${zipPath}" "${uploadUrl}"`;
     
-    const result = execSync(curlUploadCmd).toString();
-    console.log(`Upload complete! Result:`, result);
+    const result = execSync(curlUploadCmd, { maxBuffer: 1024 * 1024 * 50 }).toString();
+    console.log(`Upload complete! Result:`, result.slice(0, 500));
 }
 
 main().catch(console.error);
