@@ -445,9 +445,15 @@ class ParticleSystem {
                 ctx.restore();
             }
 
-            // 3. 几何能量菱形光网
+            // 3. 几何能量菱形光网与官方正版网纹
             ctx.rotate(n.rotation);
             ctx.globalAlpha = n.opacity;
+
+            const webImg = window.gameAssets ? window.gameAssets.get('web') : null;
+            if (webImg) {
+                const dSize = n.radius * 2.15;
+                ctx.drawImage(webImg, -dSize / 2, -dSize / 2, dSize, dSize);
+            }
 
             // 中心耀斑
             const centerGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, n.radius * 0.5);
@@ -560,33 +566,46 @@ class ParticleSystem {
                 }
             }
 
-            // 金币本体
+            // 金币本体 (优先使用官方 10 帧立体旋转金币贴图)
             ctx.save();
             ctx.translate(c.x, c.y);
-            const scaleX = Math.cos(c.rotation);
-            ctx.scale(scaleX, 1);
 
-            ctx.shadowColor = '#ffd700';
-            ctx.shadowBlur = 14;
+            const coinAssetKey = c.isBig ? 'coinAni1' : 'coinAni2';
+            const coinImg = window.gameAssets ? window.gameAssets.get(coinAssetKey) : null;
 
-            const coinGrad = ctx.createRadialGradient(-2, -2, 2, 0, 0, c.size);
-            coinGrad.addColorStop(0, '#fff6a9');
-            coinGrad.addColorStop(0.35, '#ffd700');
-            coinGrad.addColorStop(0.85, '#d49b00');
-            coinGrad.addColorStop(1, '#8f5c00');
+            if (coinImg) {
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 15;
+                const frameIdx = Math.abs(Math.floor(c.rotation * 3.5)) % 10;
+                const sy = frameIdx * 60;
+                const cSize = c.size * 1.6;
+                ctx.drawImage(coinImg, 0, sy, 60, 60, -cSize / 2, -cSize / 2, cSize, cSize);
+            } else {
+                const scaleX = Math.cos(c.rotation);
+                ctx.scale(scaleX, 1);
 
-            ctx.fillStyle = coinGrad;
-            ctx.beginPath();
-            ctx.arc(0, 0, c.size, 0, Math.PI * 2);
-            ctx.fill();
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 14;
 
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
+                const coinGrad = ctx.createRadialGradient(-2, -2, 2, 0, 0, c.size);
+                coinGrad.addColorStop(0, '#fff6a9');
+                coinGrad.addColorStop(0.35, '#ffd700');
+                coinGrad.addColorStop(0.85, '#d49b00');
+                coinGrad.addColorStop(1, '#8f5c00');
 
-            ctx.strokeStyle = '#b8860b';
-            ctx.lineWidth = 1.6;
-            ctx.strokeRect(-c.size * 0.35, -c.size * 0.35, c.size * 0.7, c.size * 0.7);
+                ctx.fillStyle = coinGrad;
+                ctx.beginPath();
+                ctx.arc(0, 0, c.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.strokeStyle = '#b8860b';
+                ctx.lineWidth = 1.6;
+                ctx.strokeRect(-c.size * 0.35, -c.size * 0.35, c.size * 0.7, c.size * 0.7);
+            }
 
             ctx.restore();
         }

@@ -1,40 +1,36 @@
 /**
- * 捕鱼达人 - 炮台、子弹发射、弹射反射与激光能量炮系统
+ * 捕鱼达人 - 顶级街机高科技机甲炮台、正版子弹与量子聚能能量系统
+ * 集成真实街机 1~7 级重装金属炮台（5 帧真实机械后坐力动画）、全息激光战术瞄准、
+ * 双重机械反重力旋转能环、重装机械机动侧翼、量子方舟核心与灭世龙神超限形态
  */
 
 const CANNON_LEVELS = [
-    { level: 1, name: '青铜单管炮', cost: 1, netRadius: 70, speed: 18, color: '#00e5ff', barrels: 1 },
-    { level: 2, name: '白银强化炮', cost: 2, netRadius: 80, speed: 19, color: '#2979ff', barrels: 1 },
-    { level: 3, name: '黄金双联炮', cost: 5, netRadius: 90, speed: 20, color: '#ffd700', barrels: 2 },
-    { level: 4, name: '翡翠爆裂炮', cost: 10, netRadius: 100, speed: 21, color: '#00e676', barrels: 2 },
-    { level: 5, name: '紫晶充能炮', cost: 20, netRadius: 115, speed: 22, color: '#d500f9', barrels: 2 },
-    { level: 6, name: '赤焰三管炮', cost: 50, netRadius: 130, speed: 23, color: '#ff3d00', barrels: 3 },
-    { level: 7, name: '极光等离子炮', cost: 100, netRadius: 150, speed: 24, color: '#00b0ff', barrels: 3 },
-    { level: 8, name: '泰坦四联重炮', cost: 200, netRadius: 170, speed: 25, color: '#ffea00', barrels: 4 },
-    { level: 9, name: '虚空毁灭巨炮', cost: 500, netRadius: 190, speed: 26, color: '#651fff', barrels: 4 },
-    { level: 10, name: '灭世龙神神圣炮', cost: 1000, netRadius: 220, speed: 28, color: '#ff0055', barrels: 4 }
+    { level: 1, name: '青铜单管机甲炮', cost: 1, netRadius: 75, speed: 19, color: '#00e5ff', barrels: 1, spriteIndex: 1 },
+    { level: 2, name: '白银强袭双联炮', cost: 2, netRadius: 85, speed: 20, color: '#2979ff', barrels: 1, spriteIndex: 2 },
+    { level: 3, name: '黄金重装磁轨炮', cost: 5, netRadius: 95, speed: 21, color: '#ffd700', barrels: 2, spriteIndex: 3 },
+    { level: 4, name: '翡翠爆裂聚能炮', cost: 10, netRadius: 105, speed: 22, color: '#00e676', barrels: 2, spriteIndex: 4 },
+    { level: 5, name: '紫晶脉冲湮灭炮', cost: 20, netRadius: 120, speed: 23, color: '#d500f9', barrels: 2, spriteIndex: 5 },
+    { level: 6, name: '赤焰极速三管炮', cost: 50, netRadius: 135, speed: 24, color: '#ff3d00', barrels: 3, spriteIndex: 6 },
+    { level: 7, name: '极光等离子重炮', cost: 100, netRadius: 155, speed: 25, color: '#00b0ff', barrels: 3, spriteIndex: 7 },
+    { level: 8, name: '泰坦黄金四联重炮', cost: 200, netRadius: 175, speed: 26, color: '#ffea00', barrels: 4, spriteIndex: 7 },
+    { level: 9, name: '虚空暗物质终结炮', cost: 500, netRadius: 200, speed: 27, color: '#7c4dff', barrels: 4, spriteIndex: 7 },
+    { level: 10, name: '灭世龙神神圣歼灭炮', cost: 1000, netRadius: 230, speed: 29, color: '#ff0055', barrels: 4, spriteIndex: 7 }
+];
+
+const CANNON_SPRITE_DATA = [
+    null,
+    { key: 'cannon1', w: 74, h: 74, regX: 37, regY: 45 },
+    { key: 'cannon2', w: 74, h: 76, regX: 37, regY: 46 },
+    { key: 'cannon3', w: 74, h: 76, regX: 37, regY: 46 },
+    { key: 'cannon4', w: 74, h: 83, regX: 37, regY: 52 },
+    { key: 'cannon5', w: 74, h: 85, regX: 37, regY: 55 },
+    { key: 'cannon6', w: 74, h: 90, regX: 37, regY: 58 },
+    { key: 'cannon7', w: 74, h: 94, regX: 37, regY: 60 }
 ];
 
 class Bullet {
     constructor(x, y, angle, levelConfig, targetFish = null) {
-        this.x = x;
-        this.y = y;
-        this.angle = angle;
-        this.levelConfig = levelConfig;
-        this.targetFish = targetFish;
-
-        this.speed = levelConfig.speed;
-        this.vx = Math.cos(angle) * this.speed;
-        this.vy = Math.sin(angle) * this.speed;
-
-        this.radius = 6 + Math.min(levelConfig.level * 0.7, 7);
-        this.color = levelConfig.color;
-        this.bounces = 0;
-        this.maxBounces = 5;
-        this.isDead = false;
-        this.trail = [];
-        this.isHighTier = levelConfig.level >= 6; // 高阶神级炮台标识
-        this.sparkParticles = [];
+        this.reset(x, y, angle, levelConfig, targetFish);
     }
 
     // 对象池复用重置接口
@@ -49,22 +45,22 @@ class Bullet {
         this.vx = Math.cos(angle) * this.speed;
         this.vy = Math.sin(angle) * this.speed;
 
-        this.radius = 6 + Math.min(levelConfig.level * 0.7, 7);
+        this.radius = 8 + Math.min(levelConfig.level * 0.8, 8);
         this.color = levelConfig.color;
         this.bounces = 0;
         this.maxBounces = 5;
         this.isDead = false;
-        this.trail.length = 0;
+        this.trail = [];
         this.isHighTier = levelConfig.level >= 6;
-        this.sparkParticles.length = 0;
+        this.sparkParticles = [];
     }
 
     update(screenWidth, screenHeight) {
         if (this.isDead) return;
 
-        // 保存拖尾 (高阶炮台更长更粗)
-        const maxTrailLength = this.isHighTier ? 12 : 6;
-        this.trail.push({ x: this.x, y: this.y, alpha: 0.85 });
+        // 1. 保存拖尾光粒
+        const maxTrailLength = this.isHighTier ? 12 : 7;
+        this.trail.push({ x: this.x, y: this.y, alpha: 0.9 });
         if (this.trail.length > maxTrailLength) {
             this.trail.shift();
         }
@@ -72,38 +68,37 @@ class Bullet {
             t.alpha *= 0.85;
         }
 
-        // 高阶炮台生成火焰与电弧火花粒子
-        if (this.isHighTier && Math.random() < 0.75) {
+        // 2. 高阶炮台生成等离子火花与电弧飞屑
+        if (this.isHighTier && Math.random() < 0.85) {
             this.sparkParticles.push({
                 x: this.x + (Math.random() - 0.5) * 8,
                 y: this.y + (Math.random() - 0.5) * 8,
-                vx: -this.vx * 0.2 + (Math.random() - 0.5) * 3,
-                vy: -this.vy * 0.2 + (Math.random() - 0.5) * 3,
+                vx: -this.vx * 0.18 + (Math.random() - 0.5) * 3,
+                vy: -this.vy * 0.18 + (Math.random() - 0.5) * 3,
                 size: 2 + Math.random() * 3,
                 alpha: 1,
-                color: this.levelConfig.level >= 9 ? '#ff0055' : (this.levelConfig.level >= 8 ? '#ffea00' : '#ff3d00')
+                color: this.levelConfig.level >= 9 ? '#d500f9' : (this.levelConfig.level >= 8 ? '#ffea00' : '#ff3d00')
             });
         }
 
-        // 更新火花粒子
+        // 3. 更新火花粒子
         for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
             const p = this.sparkParticles[i];
             p.x += p.vx;
             p.y += p.vy;
-            p.alpha -= 0.08;
+            p.alpha -= 0.09;
             if (p.alpha <= 0) {
                 this.sparkParticles.splice(i, 1);
             }
         }
 
-        // 若开启锁定目标，子弹智能微调追踪锁定鱼
+        // 4. 锁定目标自动追踪微调
         if (this.targetFish && !this.targetFish.isDead) {
             const targetAngle = Math.atan2(this.targetFish.y - this.y, this.targetFish.x - this.x);
-            // 平滑插值转弯
             let angleDiff = targetAngle - this.angle;
             while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
             while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-            this.angle += angleDiff * 0.12;
+            this.angle += angleDiff * 0.14;
 
             this.vx = Math.cos(this.angle) * this.speed;
             this.vy = Math.sin(this.angle) * this.speed;
@@ -112,7 +107,7 @@ class Bullet {
         this.x += this.vx;
         this.y += this.vy;
 
-        // 经典捕鱼弹射反弹机制 (撞击边界不浪费子弹)
+        // 5. 经典弹射反弹机制
         if (this.x < this.radius) {
             this.x = this.radius;
             this.vx = -this.vx;
@@ -132,8 +127,7 @@ class Bullet {
             this.bounces++;
         }
 
-        // 超过反弹次数或穿过底部
-        if (this.bounces > this.maxBounces || this.y > screenHeight + 30) {
+        if (this.bounces > this.maxBounces || this.y > screenHeight + 50) {
             this.isDead = true;
         }
     }
@@ -141,8 +135,8 @@ class Bullet {
     render(ctx) {
         if (this.isDead) return;
 
-        // 1. 渲染高阶火花与电弧粒子
-        if (this.sparkParticles && this.sparkParticles.length > 0) {
+        // 1. 渲染粒子飞屑
+        if (this.sparkParticles.length > 0) {
             for (const sp of this.sparkParticles) {
                 ctx.save();
                 ctx.globalAlpha = sp.alpha;
@@ -156,7 +150,7 @@ class Bullet {
             }
         }
 
-        // 2. 渲染高能发光拖尾 (高阶炮台多层烈焰等离子光晕)
+        // 2. 渲染高能发光拖尾
         for (let i = 0; i < this.trail.length; i++) {
             const t = this.trail[i];
             const ratio = i / this.trail.length;
@@ -173,44 +167,43 @@ class Bullet {
             ctx.restore();
         }
 
-        // 3. 渲染弹丸本体 (高阶炮台带有能量光环与电弧)
+        // 3. 渲染真实子弹贴图与高能光环
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
+        ctx.rotate(this.angle + Math.PI / 2); // 贴图默认朝上
 
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = this.isHighTier ? 22 : 12;
+        const bulletIdx = Math.min(8, Math.max(1, this.levelConfig.level));
+        const bulletImg = window.gameAssets ? window.gameAssets.get(`bullet${bulletIdx}`) : null;
 
-        if (this.isHighTier) {
-            // 外层能量激波环
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.8;
-            ctx.beginPath();
-            ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2);
-            ctx.stroke();
+        if (bulletImg) {
+            // 贴图光晕
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = this.isHighTier ? 18 : 10;
+            const bw = bulletImg.width * 1.15;
+            const bh = bulletImg.height * 1.15;
+            ctx.drawImage(bulletImg, -bw / 2, -bh / 2, bw, bh);
 
-            // 旋转电弧
-            const arcTime = Date.now() * 0.01;
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
+            // 高阶炮台增加电弧能量外环
+            if (this.isHighTier) {
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, bw * 0.75, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        } else {
+            // 矢量优雅备用回退
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 14;
+            const grad = ctx.createRadialGradient(2, 0, 1, 0, 0, this.radius);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.4, this.color);
+            grad.addColorStop(1, '#001030');
+            ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(0, 0, this.radius * 1.8, arcTime, arcTime + Math.PI * 0.8);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(0, 0, this.radius * 1.8, arcTime + Math.PI, arcTime + Math.PI * 1.8);
-            ctx.stroke();
+            ctx.ellipse(0, 0, this.radius * 0.9, this.radius * 1.4, 0, 0, Math.PI * 2);
+            ctx.fill();
         }
-
-        // 椭圆流光弹丸
-        const grad = ctx.createRadialGradient(2, 0, 1, 0, 0, this.radius);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.35, this.color);
-        grad.addColorStop(1, '#000033');
-        ctx.fillStyle = grad;
-
-        ctx.beginPath();
-        ctx.ellipse(0, 0, this.radius * (this.isHighTier ? 1.6 : 1.4), this.radius * 0.95, 0, 0, Math.PI * 2);
-        ctx.fill();
 
         ctx.restore();
     }
@@ -224,18 +217,26 @@ class Cannon {
         this.targetAngle = -Math.PI / 2;
 
         this.levelIndex = 0; // 0 ~ 9
-        this.recoil = 0; // 后坐力回弹距离
-        this.isRageMode = false; // 极速狂暴模式
+        this.recoil = 0; // 机械位移后坐力
+        this.recoilFrame = 0; // 0 ~ 4 官方贴图帧后坐力序列
+        this.recoilFrameTimer = 0;
+
+        this.isRageMode = false;
         this.rageTimer = 0;
 
-        // 激光蓄能系统 (0 ~ 100)
+        // 激光蓄能系统
         this.laserEnergy = 0;
         this.isFiringLaser = false;
         this.laserTimer = 0;
-        this.laserDuration = 200; // 帧数
+        this.laserDuration = 200;
 
         this.lastFireTime = 0;
-        this.fireInterval = 90; // 无敌破解版：基础射速大幅翻倍提升
+        this.fireInterval = 90; // 无敌破解版极致开火间隔
+
+        // 高级感动画参数：反重力机甲能量环旋转角
+        this.ringRotation = 0;
+        this.corePulse = 0;
+        this.muzzleFlash = 0; // 炮口火焰闪光爆发
     }
 
     getCurrentConfig() {
@@ -255,14 +256,14 @@ class Cannon {
     }
 
     addLaserEnergy(amount) {
-        this.laserEnergy = 100; // 无敌破解版：保持满蓄能状态
+        this.laserEnergy = 100;
     }
 
     fireLaser() {
         if (this.isFiringLaser) return false;
         this.isFiringLaser = true;
         this.laserTimer = this.laserDuration;
-        this.laserEnergy = 100; // 无敌破解版：激光发射完毕后瞬间充满
+        this.laserEnergy = 100;
         if (window.soundManager) {
             window.soundManager.playLaser();
         }
@@ -271,7 +272,6 @@ class Cannon {
 
     aimAt(targetX, targetY) {
         let desired = Math.atan2(targetY - this.y, targetX - this.x);
-        // 限制仰角：不能朝向底盘下方开火 (限制在 -170° 到 -10° 之间)
         if (desired > -0.15 && desired <= Math.PI / 2) desired = -0.15;
         if (desired < -Math.PI + 0.15 || desired > Math.PI / 2) desired = -Math.PI + 0.15;
         this.angle = desired;
@@ -287,21 +287,22 @@ class Cannon {
         if (!this.canFire()) return null;
 
         this.lastFireTime = performance.now();
-        this.recoil = 14; // 触发炮管强劲后坐力
+        this.recoil = 15;
+        this.recoilFrame = 1; // 启动贴图 5 帧后坐力动画
+        this.recoilFrameTimer = 0;
+        this.muzzleFlash = 1.0; // 激发炮口烈焰
 
         const cfg = this.getCurrentConfig();
 
         // 炮口位置计算
-        const barrelLength = 48 - this.recoil;
+        const barrelLength = 54 - this.recoil * 0.5;
         const muzzleX = this.x + Math.cos(this.angle) * barrelLength;
         const muzzleY = this.y + Math.sin(this.angle) * barrelLength;
 
-        // 播放发炮音效
         if (window.soundManager) {
             window.soundManager.playShoot(cfg.level);
         }
 
-        // 根据炮管数量发射子弹 (使用对象池 bulletPool 复用子弹，避免垃圾回收卡顿)
         const getB = (bx, by, bAngle) => {
             if (window.bulletPool) {
                 return window.bulletPool.get(bx, by, bAngle, cfg, targetFish);
@@ -313,8 +314,7 @@ class Cannon {
         if (cfg.barrels === 1) {
             bullets.push(getB(muzzleX, muzzleY, this.angle));
         } else if (cfg.barrels === 2) {
-            // 双管左右微偏移
-            const offset = 7;
+            const offset = 8;
             const perpAngle = this.angle + Math.PI / 2;
             const b1X = muzzleX + Math.cos(perpAngle) * offset;
             const b1Y = muzzleY + Math.sin(perpAngle) * offset;
@@ -340,11 +340,32 @@ class Cannon {
     update() {
         // 后坐力平滑回弹
         if (this.recoil > 0) {
-            this.recoil *= 0.82;
+            this.recoil *= 0.8;
             if (this.recoil < 0.2) this.recoil = 0;
         }
 
-        // 狂暴模式倒计时 (若为手动常开，则等待玩家手动取消)
+        // 官方 5 帧真实后坐力贴图推进
+        if (this.recoilFrame > 0) {
+            this.recoilFrameTimer++;
+            if (this.recoilFrameTimer >= 2) {
+                this.recoilFrameTimer = 0;
+                this.recoilFrame++;
+                if (this.recoilFrame >= 5) {
+                    this.recoilFrame = 0;
+                }
+            }
+        }
+
+        // 炮口烈焰衰减
+        if (this.muzzleFlash > 0) {
+            this.muzzleFlash = Math.max(0, this.muzzleFlash - 0.18);
+        }
+
+        // 反重力机甲能量环旋转
+        this.ringRotation += 0.025;
+        this.corePulse += 0.08;
+
+        // 狂暴模式
         if (this.isRageMode && this.rageTimer > 0 && this.rageTimer < 90000000) {
             this.rageTimer--;
             if (this.rageTimer <= 0) {
@@ -354,7 +375,7 @@ class Cannon {
             }
         }
 
-        // 激光发射持续更新
+        // 激光发射
         if (this.isFiringLaser) {
             this.laserTimer--;
             if (this.laserTimer <= 0) {
@@ -366,127 +387,308 @@ class Cannon {
     render(ctx) {
         const cfg = this.getCurrentConfig();
 
-        // 1. 底座旋转机台 (Base Pedestal)
+        // 1. 渲染底部全息激光战术瞄准线 (Tactical Holographic Laser Sight)
+        this.renderHolographicAiming(ctx, cfg);
+
+        // 2. 渲染经典街机控制底座 (Arcade Pedestal & Chassis)
+        this.renderChassisPlatform(ctx, cfg);
+
+        // 3. 渲染旋转炮台机体与高科技侧翼
         ctx.save();
         ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle + Math.PI / 2); // 以朝上为基准旋转
 
-        // 底座外发光圆环
-        const ringGrad = ctx.createRadialGradient(0, 0, 20, 0, 0, 52);
-        ringGrad.addColorStop(0, '#37474f');
-        ringGrad.addColorStop(0.7, '#263238');
-        ringGrad.addColorStop(1, '#102027');
-        ctx.fillStyle = ringGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, 48, 0, Math.PI * 2);
-        ctx.fill();
+        // 3.1 渲染重装机械机动侧翼 (Pneumatic Mecha Stabilizer Wings)
+        this.renderMechaWings(ctx, cfg);
 
-        // 动态能量光环
-        ctx.strokeStyle = cfg.color;
-        ctx.lineWidth = 3;
-        ctx.shadowColor = cfg.color;
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.arc(0, 0, 44, 0, Math.PI * 2);
-        ctx.stroke();
+        // 3.2 渲染官方正版重金属炮台贴图 (含 5 帧真实机械后座动作)
+        this.renderCannonSprite(ctx, cfg);
+
+        // 3.3 渲染量子方舟核心 (Quantum Ark Core)
+        this.renderQuantumCore(ctx, cfg);
+
+        // 3.4 渲染炮口等离子烈焰爆发 (Muzzle Flash)
+        if (this.muzzleFlash > 0) {
+            this.renderMuzzleFlash(ctx, cfg);
+        }
 
         ctx.restore();
 
-        // 2. 旋转炮台机身与炮管
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle + Math.PI / 2); // 调整朝向以 12 点钟方向对齐
-
-        const barrelOffset = -this.recoil;
-
-        // 根据炮台等级与管数绘制不同形态的炫酷炮管
-        this.drawBarrels(ctx, cfg, barrelOffset);
-
-        // 炮塔中心机械旋转转盘
-        const coreGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 28);
-        coreGrad.addColorStop(0, '#eceff1');
-        coreGrad.addColorStop(0.5, '#78909c');
-        coreGrad.addColorStop(1, '#37474f');
-        ctx.fillStyle = coreGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, 26, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 炮心发光水晶
-        ctx.fillStyle = cfg.color;
-        ctx.shadowColor = cfg.color;
-        ctx.shadowBlur = 15;
-        ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-
-        // 3. 如果正在发射毁灭激光，绘制全屏穿透激光束
+        // 4. 激光发射射线
         if (this.isFiringLaser) {
             this.renderLaserBeam(ctx);
         }
     }
 
-    drawBarrels(ctx, cfg, recoil) {
-        ctx.fillStyle = '#cfd8dc';
-        ctx.strokeStyle = '#37474f';
+    // 渲染全息激光战术瞄准系统
+    renderHolographicAiming(ctx, cfg) {
+        ctx.save();
+        const maxDist = 900;
+        const targetX = this.x + Math.cos(this.angle) * maxDist;
+        const targetY = this.y + Math.sin(this.angle) * maxDist;
+
+        // 瞄准激光光轨 (虚线科技流光)
+        ctx.strokeStyle = cfg.color;
+        ctx.globalAlpha = 0.35 + Math.sin(this.corePulse * 1.5) * 0.15;
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([10, 8]);
+        ctx.lineDashOffset = -performance.now() * 0.04;
+        ctx.shadowColor = cfg.color;
+        ctx.shadowBlur = 10;
+
+        ctx.beginPath();
+        ctx.moveTo(this.x + Math.cos(this.angle) * 55, this.y + Math.sin(this.angle) * 55);
+        ctx.lineTo(targetX, targetY);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
+    // 渲染街机控制平台底座
+    renderChassisPlatform(ctx, cfg) {
+        const bottomImg = window.gameAssets ? window.gameAssets.get('bottom') : null;
+        if (bottomImg) {
+            ctx.save();
+            // bottom.png 的标准底座截取
+            const bW = 765;
+            const bH = 72;
+            ctx.drawImage(bottomImg, 0, 0, bW, bH, this.x - bW / 2, this.y - 18, bW, bH);
+            ctx.restore();
+        }
+
+        // 双重反重力机甲能量环 (Dual Rotating Tech Rings)
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // 外部合金机甲环
+        const baseGrad = ctx.createRadialGradient(0, 0, 15, 0, 0, 56);
+        baseGrad.addColorStop(0, '#37474f');
+        baseGrad.addColorStop(0.65, '#212121');
+        baseGrad.addColorStop(1, '#0d1b2a');
+        ctx.fillStyle = baseGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 52, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 外层机械齿轮刻度环 (顺时针旋转)
+        ctx.save();
+        ctx.rotate(this.ringRotation);
+        ctx.strokeStyle = cfg.color;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = cfg.color;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(0, 0, 48, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const ticks = 12;
+        for (let i = 0; i < ticks; i++) {
+            const a = (i / ticks) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * 44, Math.sin(a) * 44);
+            ctx.lineTo(Math.cos(a) * 50, Math.sin(a) * 50);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // 内层符文能量环 (逆时针旋转)
+        ctx.save();
+        ctx.rotate(-this.ringRotation * 1.5);
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.5 + Math.sin(this.corePulse) * 0.3;
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, 38, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.restore();
+    }
+
+    // 渲染重装机械机动侧翼
+    renderMechaWings(ctx, cfg) {
+        ctx.save();
+        const wingFlare = this.recoil * 0.3; // 发炮时机翼外扩液压缓冲
+        ctx.fillStyle = '#263238';
+        ctx.strokeStyle = cfg.color;
         ctx.lineWidth = 2;
+        ctx.shadowColor = cfg.color;
+        ctx.shadowBlur = 8;
 
-        const barrelLength = 46 + recoil;
+        // 左翼板
+        ctx.beginPath();
+        ctx.moveTo(-28 - wingFlare, 15);
+        ctx.lineTo(-52 - wingFlare * 1.5, 5);
+        ctx.lineTo(-44 - wingFlare * 1.5, -25);
+        ctx.lineTo(-24 - wingFlare, -15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
-        if (cfg.barrels === 1) {
-            // 单管重炮
-            const grad = ctx.createLinearGradient(-10, 0, 10, 0);
-            grad.addColorStop(0, '#546e7a');
-            grad.addColorStop(0.5, '#b0bec5');
-            grad.addColorStop(1, '#37474f');
-            ctx.fillStyle = grad;
-            ctx.fillRect(-8, -barrelLength, 16, barrelLength);
+        // 右翼板
+        ctx.beginPath();
+        ctx.moveTo(28 + wingFlare, 15);
+        ctx.lineTo(52 + wingFlare * 1.5, 5);
+        ctx.lineTo(44 + wingFlare * 1.5, -25);
+        ctx.lineTo(24 + wingFlare, -15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
-            // 炮口加固圈
-            ctx.fillStyle = cfg.color;
-            ctx.fillRect(-10, -barrelLength, 20, 8);
-        } else if (cfg.barrels === 2) {
-            // 双管联装
-            const grad = ctx.createLinearGradient(-16, 0, 16, 0);
-            grad.addColorStop(0, '#455a64');
-            grad.addColorStop(0.5, '#cfd8dc');
-            grad.addColorStop(1, '#263238');
-            ctx.fillStyle = grad;
+        // 翼板上的高能荧光导流线
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-34 - wingFlare, 8);
+        ctx.lineTo(-44 - wingFlare * 1.3, -15);
+        ctx.moveTo(34 + wingFlare, 8);
+        ctx.lineTo(44 + wingFlare * 1.3, -15);
+        ctx.stroke();
 
-            ctx.fillRect(-14, -barrelLength, 10, barrelLength);
-            ctx.fillRect(4, -barrelLength, 10, barrelLength);
+        ctx.restore();
+    }
 
-            ctx.fillStyle = cfg.color;
-            ctx.fillRect(-15, -barrelLength, 12, 7);
-            ctx.fillRect(3, -barrelLength, 12, 7);
-        } else if (cfg.barrels === 3) {
-            // 三管加特林/三叉戟
-            ctx.fillStyle = '#78909c';
-            ctx.fillRect(-18, -barrelLength + 6, 9, barrelLength - 6);
-            ctx.fillRect(-4.5, -barrelLength, 9, barrelLength);
-            ctx.fillRect(9, -barrelLength + 6, 9, barrelLength - 6);
+    // 渲染官方正版重金属炮台贴图
+    renderCannonSprite(ctx, cfg) {
+        const spriteIdx = cfg.spriteIndex || 1;
+        const spriteMeta = CANNON_SPRITE_DATA[spriteIdx] || CANNON_SPRITE_DATA[1];
+        const cannonImg = window.gameAssets ? window.gameAssets.get(spriteMeta.key) : null;
 
-            ctx.fillStyle = cfg.color;
-            ctx.fillRect(-19, -barrelLength + 6, 11, 7);
-            ctx.fillRect(-5.5, -barrelLength, 11, 7);
-            ctx.fillRect(8, -barrelLength + 6, 11, 7);
-        } else {
-            // 四联装灭世神炮
-            ctx.fillStyle = '#b0bec5';
-            ctx.fillRect(-22, -barrelLength + 4, 8, barrelLength - 4);
-            ctx.fillRect(-11, -barrelLength, 9, barrelLength);
-            ctx.fillRect(2, -barrelLength, 9, barrelLength);
-            ctx.fillRect(14, -barrelLength + 4, 8, barrelLength - 4);
-
-            ctx.fillStyle = cfg.color;
+        if (cannonImg) {
+            const frameY = this.recoilFrame * spriteMeta.h;
+            ctx.save();
             ctx.shadowColor = cfg.color;
             ctx.shadowBlur = 10;
-            ctx.fillRect(-23, -barrelLength + 4, 10, 8);
-            ctx.fillRect(-12, -barrelLength, 11, 8);
-            ctx.fillRect(1, -barrelLength, 11, 8);
-            ctx.fillRect(13, -barrelLength + 4, 10, 8);
+
+            // 绘制当前后坐力帧
+            ctx.drawImage(
+                cannonImg,
+                0, frameY, spriteMeta.w, spriteMeta.h,
+                -spriteMeta.regX, -spriteMeta.regY, spriteMeta.w, spriteMeta.h
+            );
+
+            // 超限神炮额外光效装甲强化 (Lv.8, 9, 10)
+            if (cfg.level >= 8) {
+                this.renderTitanGodArmor(ctx, cfg);
+            }
+
+            ctx.restore();
+        } else {
+            // 备用矢量重装炮管
+            this.renderVectorBarrels(ctx, cfg);
         }
+    }
+
+    // 泰坦/神圣歼灭炮超限神级外装装甲
+    renderTitanGodArmor(ctx, cfg) {
+        ctx.save();
+        // 磁轨加速光环
+        const pulse = Math.sin(this.corePulse * 2) * 3;
+        ctx.strokeStyle = cfg.color;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = cfg.color;
+        ctx.shadowBlur = 18;
+
+        // 黄金巨龙 / 暗物质神级加速器导轨
+        ctx.beginPath();
+        ctx.arc(0, -42, 26 + pulse, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 龙神神圣角饰
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.moveTo(-18, -25);
+        ctx.lineTo(-32, -60);
+        ctx.lineTo(-12, -45);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(18, -25);
+        ctx.lineTo(32, -60);
+        ctx.lineTo(12, -45);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // 渲染量子方舟反应堆核心
+    renderQuantumCore(ctx, cfg) {
+        ctx.save();
+
+        // 核心金属约束环
+        const chamberGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 24);
+        chamberGrad.addColorStop(0, '#eceff1');
+        chamberGrad.addColorStop(0.45, '#607d8b');
+        chamberGrad.addColorStop(1, '#263238');
+        ctx.fillStyle = chamberGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 等离子呼吸能量球
+        const breath = (Math.sin(this.corePulse * 2.5) + 1) * 0.5;
+        const coreRadius = 8 + breath * 4;
+
+        ctx.fillStyle = cfg.color;
+        ctx.shadowColor = cfg.color;
+        ctx.shadowBlur = 18 + breath * 10;
+        ctx.beginPath();
+        ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 核心白炽耀斑
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, coreRadius * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // 渲染炮口烈焰爆发
+    renderMuzzleFlash(ctx, cfg) {
+        ctx.save();
+        const flashY = -62;
+        ctx.translate(0, flashY);
+
+        ctx.globalAlpha = this.muzzleFlash;
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = cfg.color;
+        ctx.shadowBlur = 25;
+
+        // 锥形激波火焰
+        ctx.beginPath();
+        ctx.moveTo(0, -35 * this.muzzleFlash);
+        ctx.lineTo(-18 * this.muzzleFlash, 5);
+        ctx.lineTo(18 * this.muzzleFlash, 5);
+        ctx.closePath();
+        ctx.fill();
+
+        // 环形冲击激波
+        ctx.strokeStyle = cfg.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 24 * this.muzzleFlash, 8 * this.muzzleFlash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // 矢量备用炮管
+    renderVectorBarrels(ctx, cfg) {
+        const barrelLength = 48 - this.recoil;
+        const grad = ctx.createLinearGradient(-12, 0, 12, 0);
+        grad.addColorStop(0, '#37474f');
+        grad.addColorStop(0.5, '#cfd8dc');
+        grad.addColorStop(1, '#263238');
+        ctx.fillStyle = grad;
+        ctx.fillRect(-9, -barrelLength, 18, barrelLength);
+        ctx.fillStyle = cfg.color;
+        ctx.fillRect(-11, -barrelLength, 22, 9);
     }
 
     renderLaserBeam(ctx) {
