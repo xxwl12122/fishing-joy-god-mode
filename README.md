@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/banner.png" alt="捕鱼达人：海洋全能模式" width="100%" />
+</p>
+
 # 🌊 捕鱼达人 (Fishing Joy) - ⚡ 无限无敌破解版 (GOD MODE)
 
 一款基于 **HTML5 Canvas** 与 **Web Audio API** 打造的高品质街机捕鱼小游戏【无限无敌破解版】。支持直接通过浏览器游玩或双击运行打包好的全屏 Windows EXE 桌面应用！
@@ -6,7 +10,7 @@
 
 ### 📥 桌面程序直链下载 (Releases)
 
-[![Download Windows EXE](https://img.shields.io/badge/Windows_EXE-立即下载免安装版(254MB)-brightgreen?style=for-the-badge&logo=windows)](https://github.com/xxwl12122/fishing-joy-god-mode/releases/download/v1.0.0/FishingJoy-v1.0.0-Windows-x64.zip)
+[![Download Windows EXE](https://img.shields.io/badge/Windows_EXE-立即下载免安装版(742MB)-brightgreen?style=for-the-badge&logo=windows)](https://github.com/xxwl12122/fishing-joy-god-mode/releases/download/v1.0.0/FishingJoy-v1.0.0-Windows-x64.zip)
 
 > 💡 **下载说明**：点击上方按钮下载 `FishingJoy-v1.0.0-Windows-x64.zip`，解压后双击运行 **`FishingJoy.exe`** 或 **`捕鱼达人.exe`** 即可直接全屏畅玩！无需配置任何运行环境。
 
