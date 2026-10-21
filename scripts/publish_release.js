@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 function getGitHubToken() {
     try {
@@ -17,23 +17,25 @@ function getGitHubToken() {
 
 function curlApi(url, method = 'GET', data = null, extraHeaders = []) {
     const token = getGitHubToken();
-    const proxyArgs = ['--proxy', 'http://127.0.0.1:7897'];
-    const headerArgs = [
+    const args = [
+        '--proxy', 'http://127.0.0.1:7897',
+        '-s', '-S',
+        '-X', method,
         '-H', `Authorization: Bearer ${token}`,
         '-H', 'User-Agent: Release-Manager',
         '-H', 'Accept: application/vnd.github.v3+json',
         ...extraHeaders
     ];
 
-    let cmd = ['curl.exe', '-s', '-S', ...proxyArgs, '-X', method, ...headerArgs];
     if (data) {
-        cmd.push('-H', 'Content-Type: application/json');
-        cmd.push('-d', JSON.stringify(data));
+        args.push('-H', 'Content-Type: application/json');
+        args.push('-d', JSON.stringify(data));
     }
-    cmd.push(url);
+    args.push(url);
 
     try {
-        const out = execSync(cmd.join(' ')).toString();
+        const out = execFileSync('curl.exe', args).toString();
+        if (!out || out.trim() === '') return {};
         return JSON.parse(out);
     } catch (e) {
         console.error(`curlApi error:`, e.message);
@@ -56,10 +58,14 @@ async function main() {
     const zipPath = path.resolve(__dirname, '..', zipName);
 
     console.log(`Checking package: ${zipName}...`);
-    if (!fs.existsSync(zipPath)) {
-        console.log(`Packaging zip from dist/FishingJoy-win32-x64...`);
-        execSync(`tar -acf "${zipName}" -C "dist/FishingJoy-win32-x64" .`, { stdio: 'inherit' });
+    if (fs.existsSync(zipPath)) {
+        console.log(`Removing old zip file: ${zipName}...`);
+        fs.unlinkSync(zipPath);
     }
+    console.log(`Packaging lightweight zip from dist/FishingJoy-win32-x64...`);
+    execSync(`tar -acf "${zipName}" -C "dist/FishingJoy-win32-x64" .`, { stdio: 'inherit' });
+    const zipStats = fs.statSync(zipPath);
+    console.log(`New slim zip created: ${(zipStats.size / (1024 * 1024)).toFixed(2)} MB`);
 
     console.log(`Fetching release for ${tag}...`);
     let release;
@@ -76,7 +82,7 @@ async function main() {
 
 ### 🎮 Windows 桌面绿色免安装版
 - 下载下方 **Assets** 中的 \`${zipName}\`
-- 解压后直接双击 \`FishingJoy.exe\` 或 \`捕鱼达人.exe\` 即可直接全屏畅玩！无需安装任何环境！`,
+- 解压后双击 \`FishingJoy.exe\` 或 \`捕鱼达人.exe\` 即可直接全屏畅玩！无需安装任何环境！`,
             draft: false,
             prerelease: false
         });
@@ -97,13 +103,24 @@ async function main() {
         }
     }
 
-    console.log(`Uploading asset ${zipName}...`);
+    console.log(`Uploading asset ${zipName} (${(zipStats.size / (1024 * 1024)).toFixed(2)} MB)...`);
     const uploadUrl = `https://uploads.github.com/repos/${owner}/${repo}/releases/${release.id}/assets?name=${encodeURIComponent(zipName)}`;
 
-    const curlUploadCmd = `curl.exe --proxy "http://127.0.0.1:7897" -s -S -X POST -H "Authorization: Bearer ${token}" -H "Content-Type: application/zip" -H "Accept: application/vnd.github.v3+json" -T "${zipPath}" "${uploadUrl}"`;
-    
-    const result = execSync(curlUploadCmd, { maxBuffer: 1024 * 1024 * 50 }).toString();
-    console.log(`Upload complete! Result:`, result.slice(0, 500));
+    const uploadArgs = [
+        '--proxy', 'http://127.0.0.1:7897',
+        '-s', '-S',
+        '-X', 'POST',
+        '-H', `Authorization: Bearer ${token}`,
+        '-H', 'Content-Type: application/zip',
+        '-H', 'Accept: application/vnd.github.v3+json',
+        '-T', zipPath,
+        uploadUrl
+    ];
+
+    const result = execFileSync('curl.exe', uploadArgs, { maxBuffer: 1024 * 1024 * 50 }).toString();
+    console.log(`Upload complete!`);
+    const assetJson = JSON.parse(result);
+    console.log(`New asset online: ID ${assetJson.id}, Size: ${(assetJson.size / (1024 * 1024)).toFixed(2)} MB`);
 }
 
 main().catch(console.error);

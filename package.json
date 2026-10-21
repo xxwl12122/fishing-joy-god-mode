@@ -8,15 +8,49 @@
     "package": "node package_app.js",
     "release": "node package_app.js && node scripts/publish_release.js"
   },
+  "files": [
+    "index.html",
+    "main.js",
+    "package.json",
+    "css/**/*",
+    "js/**/*",
+    "images/**/*"
+  ],
+  "build": {
+    "appId": "com.fishingjoy.godmode",
+    "productName": "FishingJoy",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "files": [
+      "index.html",
+      "main.js",
+      "package.json",
+      "css/**/*",
+      "js/**/*",
+      "images/**/*"
+    ],
+    "asar": true,
+    "compression": "maximum"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
     "electron": "^45.0.0",
-    "electron-packager": "^17.1.2"
-  },
-  "dependencies": {
+    "electron-packager": "^17.1.2",
     "pixi.js": "^7.4.3"
-  }
+  },
+  "dependencies": {}
 }
