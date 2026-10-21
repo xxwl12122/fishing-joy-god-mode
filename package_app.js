@@ -36,6 +36,7 @@ async function bundle() {
       name: 'FishingJoy',
       platform: 'win32',
       arch: 'x64',
+      icon: path.join(__dirname, 'assets', 'icon.ico'),
       out: 'dist',
       overwrite: true,
       asar: true,

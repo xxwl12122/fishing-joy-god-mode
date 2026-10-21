@@ -5,6 +5,9 @@ function createWindow() {
     // 隐藏默认菜单栏
     Menu.setApplicationMenu(null);
 
+    // 游戏窗口与任务栏图标
+    const appIcon = path.join(__dirname, 'assets', 'icon.ico');
+
     // 创建全屏游戏窗口
     const mainWindow = new BrowserWindow({
         title: '捕鱼达人 (Fishing Joy) - ⚡ 无敌破解版 (GOD MODE) ⚡',
@@ -13,6 +16,7 @@ function createWindow() {
         fullscreen: true, // 启动时直接全屏
         autoHideMenuBar: true,
         backgroundColor: '#011425',
+        icon: appIcon,
         show: false,
         webPreferences: {
             nodeIntegration: false,
