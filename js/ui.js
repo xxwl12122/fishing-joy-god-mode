@@ -14,6 +14,9 @@ class UIManager {
         this.bossHpContainerEl = document.getElementById('boss-hp-container');
         this.bossHpFillEl = document.getElementById('boss-hp-fill');
         this.bossHpTextEl = document.getElementById('boss-hp-text');
+        this.frenzyWipeBannerEl = document.getElementById('frenzy-wipe-banner');
+        this.frenzyWipeTitleEl = document.getElementById('frenzy-wipe-title');
+        this.frenzyTimer = null;
         this.bigWinOverlayEl = document.getElementById('big-win-overlay');
         this.bigWinCoinsEl = document.getElementById('big-win-coins');
         this.comboContainerEl = document.getElementById('combo-container');
@@ -58,8 +61,29 @@ class UIManager {
     }
 
     updateCannon(config) {
-        if (this.cannonNameEl) this.cannonNameEl.innerText = `Lv.${config.level} ${config.name}`;
-        if (this.cannonCostEl) this.cannonCostEl.innerText = `消耗 ${config.cost.toLocaleString()} 金币 / 炮`;
+        if (this.cannonNameEl) {
+            const levelLabel = config.level >= 10 ? 'Lv.MAX' : `Lv.${config.level}`;
+            this.cannonNameEl.innerText = `${levelLabel} ${config.name}`;
+        }
+        if (this.cannonCostEl) {
+            this.cannonCostEl.innerHTML = `<span class="cannon-cost-god">♾️ 无限火力 (0 消耗)</span>`;
+        }
+    }
+
+    // 屏幕居中大号狂热清屏播报 (COMBO >= 10 时震撼呈现)
+    showFrenzyWipe(count) {
+        if (!this.frenzyWipeBannerEl || !this.frenzyWipeTitleEl) return;
+        this.frenzyWipeTitleEl.innerText = `COMBO x${count}! 狂热清屏!`;
+        this.frenzyWipeBannerEl.classList.remove('show');
+        void this.frenzyWipeBannerEl.offsetWidth;
+        this.frenzyWipeBannerEl.classList.add('show');
+
+        clearTimeout(this.frenzyTimer);
+        this.frenzyTimer = setTimeout(() => {
+            if (this.frenzyWipeBannerEl) {
+                this.frenzyWipeBannerEl.classList.remove('show');
+            }
+        }, 1800);
     }
 
     updateLaser(progress) {

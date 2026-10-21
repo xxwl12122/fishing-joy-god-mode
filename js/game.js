@@ -126,12 +126,11 @@ class GameEngine {
     }
 
     initInitialFishes() {
-        // 开局即爆发 120+ 条超狂暴鱼海，全屏纵深分布
-        this.spawnSchool('yellow_fish', 26, 0.2);
-        this.spawnSchool('clown_fish', 22, 0.4);
-        this.spawnSchool('blue_tang', 18, 0.6);
-        this.spawnSchool('puffer_fish', 14, 0.3);
-        for (let i = 0; i < 40; i++) {
+        // 开局即爆发 120+ 条超狂暴流线型鱼海，以高颜值小黄鱼、蓝唐王鱼、小丑鱼为主
+        this.spawnSchool('yellow_fish', 32, 0.2);
+        this.spawnSchool('clown_fish', 28, 0.4);
+        this.spawnSchool('blue_tang', 26, 0.6);
+        for (let i = 0; i < 35; i++) {
             const f = this.spawnRandomFish();
             if (f) {
                 f.t = 0.05 + Math.random() * 0.8;
@@ -435,12 +434,13 @@ class GameEngine {
     }
 
     spawnRandomFish() {
+        // 降低刺豚及大型鱼占比，大幅增加小黄鱼、蓝唐王、小丑鱼等轻巧鱼类
         const types = [
-            'yellow_fish', 'yellow_fish', 'yellow_fish',
-            'clown_fish', 'clown_fish',
-            'blue_tang', 'blue_tang',
-            'puffer_fish', 'jellyfish',
-            'turtle', 'swordfish',
+            'yellow_fish', 'yellow_fish', 'yellow_fish', 'yellow_fish', 'yellow_fish',
+            'clown_fish', 'clown_fish', 'clown_fish', 'clown_fish',
+            'blue_tang', 'blue_tang', 'blue_tang', 'blue_tang',
+            'jellyfish', 'turtle', 'swordfish',
+            'puffer_fish', // 仅保留 1 个权重，避免刺豚泛滥杂乱
             'manta_ray', 'hammerhead', 'shark'
         ];
 
@@ -455,20 +455,29 @@ class GameEngine {
         return this.spawnFish(type);
     }
 
-    spawnSchool(type, count = 12, startT = 0) {
+    spawnSchool(type, count = 16, startT = 0) {
         const fromLeft = Math.random() < 0.5;
-        const startY = 80 + Math.random() * (this.height - 220);
-        const endY = 80 + Math.random() * (this.height - 220);
+        const startY = 90 + Math.random() * (this.height - 220);
+        const endY = 90 + Math.random() * (this.height - 220);
+        const midY1 = startY + (Math.random() - 0.5) * 140;
+        const midY2 = endY + (Math.random() - 0.5) * 140;
+
+        // 流线型队列：让鱼群如丝带般平滑自然游动，整齐舒畅治愈解压
+        const isDoubleColumn = count > 12;
+        const spacing = 22; // 队形前后紧凑间距
 
         for (let i = 0; i < count; i++) {
-            // 优化紧密队列，让鱼群更快、更密集地游入屏幕
-            const offsetX = (Math.random() - 0.5) * 80 - (fromLeft ? i * 26 : -i * 26);
-            const offsetY = (Math.random() - 0.5) * 60;
+            const lane = isDoubleColumn ? (i % 2 === 0 ? 1 : -1) : 0;
+            const rank = Math.floor(i / (isDoubleColumn ? 2 : 1));
 
-            const p0 = { x: fromLeft ? -120 + offsetX : this.width + 120 + offsetX, y: startY + offsetY };
-            const p3 = { x: fromLeft ? this.width + 120 + offsetX : -120 + offsetX, y: endY + offsetY };
-            const p1 = { x: this.width * 0.35, y: startY + (Math.random() - 0.5) * 180 };
-            const p2 = { x: this.width * 0.65, y: endY + (Math.random() - 0.5) * 180 };
+            // 流线型纵深差 + 微正弦波鱼道起伏
+            const streamLag = fromLeft ? -rank * spacing : rank * spacing;
+            const laneOffset = lane * 18 + Math.sin(rank * 0.45) * 10;
+
+            const p0 = { x: fromLeft ? -100 + streamLag : this.width + 100 + streamLag, y: startY + laneOffset };
+            const p3 = { x: fromLeft ? this.width + 100 + streamLag : -100 + streamLag, y: endY + laneOffset };
+            const p1 = { x: this.width * 0.35, y: midY1 + laneOffset };
+            const p2 = { x: this.width * 0.65, y: midY2 + laneOffset };
 
             this.spawnFish(type, { p0, p1, p2, p3 }, startT);
         }
@@ -555,6 +564,9 @@ class GameEngine {
         this.lastCatchTime = now;
         if (window.uiManager) {
             window.uiManager.showCombo(this.comboCount);
+            if (this.comboCount >= 10) {
+                window.uiManager.showFrenzyWipe(this.comboCount);
+            }
         }
 
         // 金币收益
@@ -674,7 +686,7 @@ class GameEngine {
         const y1 = this.cannon.y;
         const x2 = x1 + Math.cos(laserAngle) * length;
         const y2 = y1 + Math.sin(laserAngle) * length;
-        const laserWidth = 50;
+        const laserWidth = 75; // 拓宽激光扫射覆盖范围，毁灭穿透更霸道
 
         for (const fish of this.fishes) {
             if (fish.isDead || fish.isDying) continue;
@@ -826,7 +838,7 @@ class GameEngine {
         }
         if (this.spawnTick % 55 === 0 && this.fishes.length < 165) {
             const schoolCount = 14 + Math.floor(Math.random() * 10);
-            const schoolType = ['yellow_fish', 'clown_fish', 'blue_tang', 'puffer_fish'][Math.floor(Math.random() * 4)];
+            const schoolType = ['yellow_fish', 'blue_tang', 'clown_fish', 'yellow_fish', 'blue_tang'][Math.floor(Math.random() * 5)];
             this.spawnSchool(schoolType, schoolCount);
         }
         // 应急补鱼机制：若大招或全屏炸弹清屏导致鱼数低于 90，快速补充鱼海
@@ -853,29 +865,21 @@ class GameEngine {
 
         const isBoss = fish.score >= 100 || fish.type === 'golden_dragon';
         const color = isBoss ? 0xff1744 : 0x00e5ff;
-        const r = Math.max(34, fish.width * 0.65);
-        const now = Date.now() * 0.003;
+        const r = Math.max(28, fish.width * 0.55);
 
-        // 1. 激光引线
-        this.hudGfx.lineStyle(1.8, color, 0.45);
+        // 1. 纤细激光引线 (半透明微弱战术指示，绝不喧宾夺主)
+        this.hudGfx.lineStyle(1.0, color, 0.22);
         this.hudGfx.moveTo(this.cannon.x, this.cannon.y);
         this.hudGfx.lineTo(fish.x, fish.y);
 
-        // 2. 旋转全息瞄准环
-        this.hudGfx.lineStyle(2.5, color, 0.85);
-        this.hudGfx.drawCircle(fish.x, fish.y, r + 8);
+        // 2. 轻量全息战术瞄准环
+        this.hudGfx.lineStyle(1.2, color, 0.38);
+        this.hudGfx.drawCircle(fish.x, fish.y, r + 4);
 
-        // 齿轮凸起标记
-        for (let i = 0; i < 4; i++) {
-            const a = now + (i * Math.PI) / 2;
-            this.hudGfx.moveTo(fish.x + Math.cos(a) * (r + 4), fish.y + Math.sin(a) * (r + 4));
-            this.hudGfx.lineTo(fish.x + Math.cos(a) * (r + 14), fish.y + Math.sin(a) * (r + 14));
-        }
-
-        // 四角锁定括号 [ ]
-        const bSize = r + 16;
-        const bLen = 12;
-        this.hudGfx.lineStyle(3, color, 0.95);
+        // 3. 极简四角战术卡尺锁定
+        const bSize = r + 8;
+        const bLen = 8;
+        this.hudGfx.lineStyle(1.4, color, 0.45);
         this.hudGfx.moveTo(fish.x - bSize, fish.y - bSize + bLen);
         this.hudGfx.lineTo(fish.x - bSize, fish.y - bSize);
         this.hudGfx.lineTo(fish.x - bSize + bLen, fish.y - bSize);

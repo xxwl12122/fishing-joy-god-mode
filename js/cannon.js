@@ -13,7 +13,7 @@ const CANNON_LEVELS = [
     { level: 7, name: '极光等离子重炮', cost: 100, netRadius: 155, speed: 25, color: '#00b0ff', barrels: 3, spriteIndex: 7 },
     { level: 8, name: '泰坦黄金四联重炮', cost: 200, netRadius: 175, speed: 26, color: '#ffea00', barrels: 4, spriteIndex: 7 },
     { level: 9, name: '虚空暗物质终结炮', cost: 500, netRadius: 200, speed: 27, color: '#7c4dff', barrels: 4, spriteIndex: 7 },
-    { level: 10, name: '灭世龙神神圣歼灭炮', cost: 1000, netRadius: 230, speed: 29, color: '#ff0055', barrels: 4, spriteIndex: 7 }
+    { level: 10, name: '灭世龙神·加特林', cost: 0, netRadius: 230, speed: 29, color: '#ff0055', barrels: 5, spriteIndex: 7 }
 ];
 
 const CANNON_SPRITE_DATA = [
@@ -169,7 +169,7 @@ class Cannon {
         this.laserEnergy = 0;
         this.isFiringLaser = false;
         this.laserTimer = 0;
-        this.laserDuration = 200;
+        this.laserDuration = 260; // 增强激光判定时长，贯穿超持久爽快体验
 
         this.lastFireTime = 0;
         this.fireInterval = 90;
@@ -465,19 +465,36 @@ class Cannon {
             }
         }
 
-        // 4. 巨型贯穿激光
+        // 4. 绚丽彩虹贯穿激光 (Rainbow Laser Beam)
         if (this.laserGfx) {
             this.laserGfx.clear();
             if (this.isFiringLaser) {
-                const len = 1600;
+                const len = 1750;
                 const endX = Math.cos(this.angle) * len;
                 const endY = Math.sin(this.angle) * len;
+                const pulse = Math.sin(performance.now() * 0.02) * 6;
+                const now = performance.now() * 0.005;
 
-                this.laserGfx.lineStyle(42, 0xff0055, 0.5);
+                // 动态彩虹七色外层高能等离子流晕
+                const rainbowColors = [0xff0055, 0xff9100, 0xffea00, 0x00e676, 0x00e5ff, 0x2979ff, 0xd500f9];
+                const activeColor = rainbowColors[Math.floor(now * 3) % rainbowColors.length];
+
+                // 超广角彩虹等离子光晕 (外层)
+                this.laserGfx.lineStyle(68 + pulse, activeColor, 0.4);
                 this.laserGfx.moveTo(0, 0);
                 this.laserGfx.lineTo(endX, endY);
 
-                this.laserGfx.lineStyle(16, 0xffffff, 0.95);
+                // 彩虹中层高能束 (青蓝金交织)
+                this.laserGfx.lineStyle(42 + pulse * 0.5, 0x00e5ff, 0.65);
+                this.laserGfx.moveTo(0, 0);
+                this.laserGfx.lineTo(endX, endY);
+
+                this.laserGfx.lineStyle(26, 0xffd700, 0.85);
+                this.laserGfx.moveTo(0, 0);
+                this.laserGfx.lineTo(endX, endY);
+
+                // 纯白炽光高密核心束
+                this.laserGfx.lineStyle(12, 0xffffff, 0.98);
                 this.laserGfx.moveTo(0, 0);
                 this.laserGfx.lineTo(endX, endY);
             }

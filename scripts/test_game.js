@@ -85,6 +85,19 @@ app.whenReady().then(async () => {
             report.coins = g.coins;
             report.diamonds = g.diamonds;
 
+            // 验证炮台 UI 文案
+            report.cannonName = document.getElementById('cannon-name')?.innerText;
+            report.cannonCost = document.getElementById('cannon-cost')?.innerText;
+            if (!report.cannonName || !report.cannonName.includes('灭世龙神·加特林')) {
+                report.errors.push('Cannon name incorrect: ' + report.cannonName);
+            }
+            if (!report.cannonCost || !report.cannonCost.includes('无限火力')) {
+                report.errors.push('Cannon cost text incorrect: ' + report.cannonCost);
+            }
+            if (window.uiManager) {
+                window.uiManager.showFrenzyWipe(15);
+            }
+
             return report;
         })()
     `);
