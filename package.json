@@ -1,0 +1,18 @@
+{
+  "name": "fish-hunter-game",
+  "version": "1.0.0",
+  "description": "一款基于 **HTML5 Canvas** 与 **Web Audio API** 打造的高品质街机捕鱼小游戏。无需安装任何额外依赖或插件，双击即可在任何现代浏览器中畅玩！",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "node package_app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-packager": "^17.1.2"
+  }
+}

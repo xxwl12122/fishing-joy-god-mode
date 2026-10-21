@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>捕鱼达人 (Fishing Joy) - ⚡ 无限无敌破解版 (GOD MODE) ⚡</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 主游戏画布 -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- 顶部 HUD 栏 -->
+        <header class="top-hud">
+            <div class="player-info-card">
+                <div class="avatar-wrapper">
+                    <div class="avatar">👑</div>
+                </div>
+                <div class="stat-pills">
+                    <div class="pill god-badge">
+                        <span class="pill-icon">⚡</span>
+                        <span class="god-text">无敌破解版</span>
+                    </div>
+                    <div class="pill">
+                        <span class="pill-icon">🪙</span>
+                        <span class="pill-text" id="coin-count">999,999,999</span>
+                    </div>
+                    <div class="pill">
+                        <span class="pill-icon">💎</span>
+                        <span class="pill-text" id="diamond-count">99,999</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="top-buttons">
+                <button class="icon-btn" id="btn-almanac" title="鱼类图鉴 (快捷键: H)">📖</button>
+                <button class="icon-btn" id="btn-sound" title="静音切换 (快捷键: M)">🔊</button>
+                <button class="icon-btn" id="btn-settings" title="系统设置">⚙️</button>
+                <button class="icon-btn" id="btn-fullscreen" title="全屏模式 (快捷键: F)">⛶</button>
+            </div>
+        </header>
+
+        <!-- BOSS 来袭预警横幅 -->
+        <div class="boss-banner" id="boss-banner">
+            <div class="boss-title">⚠️ BOSS 来袭 ⚠️</div>
+            <div class="boss-subtitle">远古金龙降临！击败赢取 300 倍超级巨奖！</div>
+        </div>
+
+        <!-- 爆奖大额庆祝特效浮层 -->
+        <div class="big-win-overlay" id="big-win-overlay">
+            <div class="big-win-title">✨ MEGA WIN ✨</div>
+            <div class="big-win-coins" id="big-win-coins">+12,000 金币</div>
+        </div>
+
+        <!-- 底部炮台调节器 -->
+        <div class="bottom-cannon-panel">
+            <div class="cannon-switch-bar">
+                <button class="adj-btn" id="btn-cannon-prev" title="降低炮台威力 (快捷键: - 或下箭头)">-</button>
+                <div class="cannon-info-box">
+                    <div class="cannon-name" id="cannon-name">Lv.1 青铜单管炮</div>
+                    <div class="cannon-cost" id="cannon-cost">消耗 1 金币 / 炮</div>
+                </div>
+                <button class="adj-btn" id="btn-cannon-next" title="提升炮台威力 (快捷键: + 或上箭头)">+</button>
+            </div>
+        </div>
+
+        <!-- 底部右侧特技按键栏 -->
+        <div class="skills-dock">
+            <div class="skill-btn" id="skill-lock" title="瞄准锁定：精确追踪大鱼">
+                <span class="skill-hotkey">1</span>
+                <span class="skill-icon">🎯</span>
+                <span class="skill-name">锁定</span>
+            </div>
+            <div class="skill-btn" id="skill-auto" title="自动发炮：解放双手挂机捕鱼">
+                <span class="skill-hotkey">2</span>
+                <span class="skill-icon">🤖</span>
+                <span class="skill-name">自动</span>
+            </div>
+            <div class="skill-btn" id="skill-rage" title="极速狂暴：射速翻倍 (消耗 5 钻石)">
+                <span class="skill-hotkey">3</span>
+                <span class="skill-icon">⚡</span>
+                <span class="skill-name">狂暴</span>
+            </div>
+            <div class="skill-btn" id="skill-freeze" title="冰封千里：冻结全屏鱼群 8 秒 (消耗 10 钻石)">
+                <span class="skill-hotkey">4</span>
+                <span class="skill-icon">❄️</span>
+                <span class="skill-name">冰封</span>
+            </div>
+            <div class="skill-btn" id="skill-laser" title="终极毁灭激光：穿透消灭直线鱼群 (能量充能)">
+                <span class="skill-hotkey">5</span>
+                <span class="skill-icon">🔮</span>
+                <span class="skill-name">激光</span>
+                <div class="laser-progress-bar">
+                    <div class="laser-progress-fill" id="laser-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 左下角快捷键操作提示 -->
+        <div class="hotkey-hints">
+            [点击/空格] 发炮 | [滚轮/+-] 切换威力 | [1-5] 施放特技 | [H] 鱼类图鉴
+        </div>
+
+        <!-- 鱼类图鉴模态弹窗 -->
+        <div class="modal-mask" id="almanac-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">📖 深海生物图鉴 (Fish Almanac)</div>
+                    <button class="close-btn" onclick="window.uiManager.closeAlmanac()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="almanac-grid" id="almanac-grid">
+                        <!-- JS 动态注入各类鱼图鉴卡片与实时预览 Canvas -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 金币破产救济金弹窗 -->
+        <div class="modal-mask" id="rescue-modal">
+            <div class="modal-content" style="max-width: 460px;">
+                <div class="modal-header">
+                    <div class="modal-title">💰 捕鱼协会救济金</div>
+                </div>
+                <div class="modal-body">
+                    <div class="rescue-content">
+                        <div class="rescue-icon">🎁</div>
+                        <div class="rescue-desc">
+                            您的金币已耗尽！深海捕鱼协会为您准备了爱心资助！<br>
+                            赠送 <strong>300 金币</strong> 助您重返深海，祝您连爆大奖！
+                        </div>
+                        <button class="claim-btn" id="btn-claim-rescue">立即领取 300 金币</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统设置模态弹窗 -->
+        <div class="modal-mask" id="settings-modal">
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <div class="modal-title">⚙️ 游戏设置</div>
+                    <button class="close-btn" onclick="window.uiManager.closeSettings()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="setting-item">
+                        <span class="setting-label">🔊 音效音量 (SFX)</span>
+                        <input type="range" id="sfx-slider" min="0" max="1" step="0.05" value="0.8">
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">🎵 背景音乐 (BGM)</span>
+                        <input type="range" id="bgm-slider" min="0" max="1" step="0.05" value="0.35">
+                    </div>
+                    <div class="setting-item" style="padding-top: 18px; color: #90caf9; font-size: 13px; line-height: 1.6;">
+                        💡 技巧提示：<br>
+                        • 子弹撞击屏幕边缘会自动反弹，绝不浪费每一发弹药！<br>
+                        • 捕获炸弹鱼可引发核爆全屏连锁！捕获冰霜海星可冻结全屏！<br>
+                        • 击败远古金龙 BOSS 可获得 300 倍金币巨奖并充满激光能量！
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 脚本加载 -->
+    <script src="js/audio.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/fish.js"></script>
+    <script src="js/cannon.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
