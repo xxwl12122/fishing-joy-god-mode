@@ -95,6 +95,13 @@ app.whenReady().then(async () => {
                 report.errors.push('Cannon cost text incorrect: ' + report.cannonCost);
             }
 
+            // 验证黑金无敌徽章
+            const godBadge = document.querySelector('.god-badge');
+            report.godBadgeText = godBadge?.innerText;
+            if (!report.godBadgeText || !report.godBadgeText.includes('无敌破解版')) {
+                report.errors.push('God badge text incorrect: ' + report.godBadgeText);
+            }
+
             // 验证深海遗迹背景贴图与层级
             if (!g.bgSprite) {
                 report.errors.push('bgSprite not found on game instance');

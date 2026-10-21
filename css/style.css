@@ -100,26 +100,44 @@ canvas#gameCanvas {
     filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
 }
 
+/* ================= 顶级神器·黑金无敌徽章 ================= */
 .god-badge {
-    background: linear-gradient(135deg, rgba(255, 0, 85, 0.4), rgba(255, 215, 0, 0.3)) !important;
-    border: 1.5px solid #ff0055 !important;
-    box-shadow: 0 0 15px rgba(255, 0, 85, 0.7) !important;
-    animation: godPulse 1.5s infinite alternate;
+    background: linear-gradient(135deg, rgba(8, 8, 12, 0.94) 0%, rgba(28, 22, 6, 0.92) 100%) !important;
+    border: 1.5px solid #ffd700 !important;
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.45), inset 0 0 8px rgba(255, 215, 0, 0.25) !important;
+    border-radius: 20px !important;
+    padding: 3px 14px !important;
+    animation: godPulseBlackGold 2.2s infinite ease-in-out;
 }
 
-@keyframes godPulse {
-    0% { transform: scale(1); filter: drop-shadow(0 0 4px #ff0055); }
-    100% { transform: scale(1.05); filter: drop-shadow(0 0 12px #ffd700); }
+@keyframes godPulseBlackGold {
+    0%, 100% {
+        transform: scale(1);
+        border-color: #ffd700;
+        box-shadow: 0 0 12px rgba(255, 215, 0, 0.45), inset 0 0 6px rgba(255, 215, 0, 0.2);
+    }
+    50% {
+        transform: scale(1.05);
+        border-color: #fff176;
+        box-shadow: 0 0 22px rgba(255, 215, 0, 0.8), inset 0 0 12px rgba(255, 235, 59, 0.45);
+    }
+}
+
+.god-badge .pill-icon {
+    font-size: 16px;
+    filter: drop-shadow(0 0 6px #ff9100);
 }
 
 .god-text {
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 900;
-    letter-spacing: 1px;
-    background: linear-gradient(180deg, #ffffff 0%, #ff1744 50%, #ffd700 100%);
+    letter-spacing: 1.2px;
+    color: #ffd700;
+    background: linear-gradient(180deg, #ffffff 0%, #ffe066 35%, #ffd700 70%, #ff9800 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 8px rgba(255, 0, 85, 0.8);
+    -webkit-text-stroke: 0.4px #000000;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 215, 0, 0.7);
 }
 
 .pill-text {
@@ -255,14 +273,13 @@ canvas#gameCanvas {
     box-shadow: 0 0 18px rgba(255, 215, 0, 0.6);
 }
 
-/* ================= 底部炮台控制器 ================= */
+/* ================= 底部炮台控制器 (半透明战术悬浮窗·位于炮台左侧，彻底不遮挡炮台本体) ================= */
 .bottom-cannon-panel {
     position: absolute;
-    bottom: 8px;
-    left: 50%;
+    bottom: 12px;
+    left: calc(50% - 225px);
     transform: translateX(-50%);
     display: flex;
-    flex-direction: column;
     align-items: center;
     z-index: 10;
     pointer-events: auto;
@@ -271,28 +288,28 @@ canvas#gameCanvas {
 .cannon-switch-bar {
     display: flex;
     align-items: center;
-    gap: 26px;
-    background: linear-gradient(180deg, rgba(8, 28, 54, 0.88), rgba(2, 12, 26, 0.94));
-    border: 2px solid rgba(255, 215, 0, 0.65);
-    border-radius: 35px;
-    padding: 8px 30px;
+    gap: 16px;
+    background: linear-gradient(180deg, rgba(6, 22, 42, 0.82), rgba(1, 10, 22, 0.9));
+    border: 1.5px solid rgba(255, 215, 0, 0.6);
+    border-radius: 28px;
+    padding: 6px 18px;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 0 20px rgba(0, 229, 255, 0.35);
-    margin-bottom: 52px; /* 为画在 Canvas 上的炮台预留空间 */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 0 16px rgba(0, 229, 255, 0.3);
+    margin-bottom: 0; /* 彻底清除向上偏移，完美规避炮台中心与炮管 */
 }
 
 .adj-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, #ff9100, #ff3d00);
-    border: 2px solid #fff;
+    border: 1.5px solid #fff;
     color: #ffffff;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 900;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -300,7 +317,7 @@ canvas#gameCanvas {
 }
 
 .adj-btn:hover {
-    transform: scale(1.14);
+    transform: scale(1.12);
     filter: brightness(1.2);
 }
 
@@ -310,22 +327,22 @@ canvas#gameCanvas {
 
 .cannon-info-box {
     text-align: center;
-    min-width: 220px;
+    min-width: 195px;
 }
 
 .cannon-name {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 800;
     color: #ffffff;
     text-shadow: 0 0 10px rgba(0, 229, 255, 0.9);
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
 }
 
 .cannon-cost {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 800;
     color: #ffd700;
-    margin-top: 3px;
+    margin-top: 2px;
 }
 
 .cannon-cost-god {
