@@ -186,35 +186,29 @@ class Cannon {
 
         this.view = new PIXI.Container();
 
-        // 1. 底部重装战术旋转底盘 (固定在基座地面上)
-        this.baseRingGfx = new PIXI.Graphics();
-        this.view.addChild(this.baseRingGfx);
-
-        // 2. 全息战术激光瞄准线
+        // 1. 全息战术激光瞄准线
         this.aimGfx = new PIXI.Graphics();
         this.view.addChild(this.aimGfx);
 
-        // 3. 激光束
+        // 2. 激光束
         this.laserGfx = new PIXI.Graphics();
         this.view.addChild(this.laserGfx);
 
-        // 4. 旋转炮台机身总成 (围绕 (0, 0) 精准旋转)
+        // 3. 旋转炮台机身总成 (围绕 (0, 0) 精准旋转)
         this.turret = new PIXI.Container();
         this.view.addChild(this.turret);
 
-        // 4.1 重型机甲机匣与液压后座阻尼器
-        this.chassisGfx = new PIXI.Graphics();
-        this.turret.addChild(this.chassisGfx);
+        // 3.1 真实高清去底神级炮台贴图 (Sprite)
+        const cannonTex = (window.pixiTextures && window.pixiTextures.cannonTexture) || PIXI.Texture.from('assets/cannon.png');
+        this.cannonSprite = new PIXI.Sprite(cannonTex);
+        // 关键对齐：锚点 X=0.5 (中轴), Y=0.7037 (旋转中心轴，完美对齐底盘转盘)
+        this.cannonSprite.anchor.set(0.5, 0.7037);
+        // 缩放到高清街机黄金比例：宽度 94px，高度 144px
+        this.cannonSprite.width = 94;
+        this.cannonSprite.height = 144;
+        this.turret.addChild(this.cannonSprite);
 
-        // 4.2 复合加特林重金属四联炮管群
-        this.barrelGfx = new PIXI.Graphics();
-        this.turret.addChild(this.barrelGfx);
-
-        // 4.3 超能等离子反应堆核心与双向旋转流光能环
-        this.coreGfx = new PIXI.Graphics();
-        this.turret.addChild(this.coreGfx);
-
-        // 4.4 炮口高能等离子开火激波
+        // 3.2 炮口高能等离子开火激波
         this.muzzleFlashGfx = new PIXI.Graphics();
         this.turret.addChild(this.muzzleFlashGfx);
 
@@ -271,14 +265,14 @@ class Cannon {
         if (!this.canFire()) return null;
 
         this.lastFireTime = performance.now();
-        this.recoil = 18;
+        this.recoil = 16;
         this.muzzleFlash = 1.0;
 
         const cfg = this.getCurrentConfig();
-        // 精确对齐：炮管物理长度 68px，后座力时向内滑动
-        const barrelLength = 68 - this.recoil * 0.6;
-        const muzzleX = this.x + Math.cos(this.angle) * barrelLength;
-        const muzzleY = this.y + Math.sin(this.angle) * barrelLength;
+        // 视觉精准对齐：贴图高度 144px，anchorY = 0.7037，中心轴到炮口的距离为 144 * 0.7037 = 101.3px
+        const currentMuzzleDist = 101.3 - this.recoil * 0.45;
+        const muzzleX = this.x + Math.cos(this.angle) * currentMuzzleDist;
+        const muzzleY = this.y + Math.sin(this.angle) * currentMuzzleDist;
 
         if (window.soundManager) {
             window.soundManager.playShoot(cfg.level);
@@ -295,7 +289,7 @@ class Cannon {
         if (cfg.barrels === 1) {
             bullets.push(getB(muzzleX, muzzleY, this.angle));
         } else if (cfg.barrels === 2) {
-            const offset = 7;
+            const offset = 8;
             const perpAngle = this.angle + Math.PI / 2;
             const b1X = muzzleX + Math.cos(perpAngle) * offset;
             const b1Y = muzzleY + Math.sin(perpAngle) * offset;
@@ -326,7 +320,7 @@ class Cannon {
 
     update() {
         if (this.recoil > 0) {
-            this.recoil *= 0.78;
+            this.recoil *= 0.76;
             if (this.recoil < 0.2) this.recoil = 0;
         }
 
@@ -361,56 +355,11 @@ class Cannon {
         this.view.x = this.x;
         this.view.y = this.y;
 
-        const cfg = this.getCurrentConfig();
-        const colorNum = parseInt(cfg.color.replace('#', '0x'), 16) || 0x00e5ff;
-
-        // 1. 底部重装战术旋转底盘 (在 this.view 局部坐标 (0, 0))
-        if (this.baseRingGfx) {
-            this.baseRingGfx.clear();
-
-            // 1.1 重型钛合金底座基盘 (多层金属高光)
-            this.baseRingGfx.beginFill(0x0b1320, 0.95);
-            this.baseRingGfx.lineStyle(2, 0x1e293b, 1);
-            this.baseRingGfx.drawCircle(0, 0, 50);
-            this.baseRingGfx.endFill();
-
-            // 1.2 慢速旋转的机械战术齿轮刻度环
-            const gearCount = 12;
-            const rot = this.ringRotation * 0.4;
-            this.baseRingGfx.lineStyle(2, 0x00e5ff, 0.7);
-            for (let i = 0; i < gearCount; i++) {
-                const a = rot + (i * Math.PI * 2) / gearCount;
-                const r1 = 43;
-                const r2 = (i % 3 === 0) ? 49 : 46;
-                this.baseRingGfx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
-                this.baseRingGfx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
-            }
-
-            // 1.3 发光蓝色能量同心环 (呼吸流光)
-            const pulse = (Math.sin(this.corePulse * 1.8) + 1) * 0.5;
-            this.baseRingGfx.lineStyle(2.5, 0x00b0ff, 0.4 + pulse * 0.3);
-            this.baseRingGfx.drawCircle(0, 0, 42);
-
-            this.baseRingGfx.lineStyle(1.2, 0xe0f7fa, 0.6 + pulse * 0.35);
-            this.baseRingGfx.drawCircle(0, 0, 37);
-
-            // 1.4 基座 4 颗重型内六角固定螺栓
-            for (let b = 0; b < 4; b++) {
-                const ba = (b * Math.PI) / 2 + Math.PI / 4;
-                const bx = Math.cos(ba) * 38;
-                const by = Math.sin(ba) * 38;
-                this.baseRingGfx.beginFill(0x334155, 1);
-                this.baseRingGfx.lineStyle(1, 0x64748b, 0.9);
-                this.baseRingGfx.drawCircle(bx, by, 3);
-                this.baseRingGfx.endFill();
-            }
-        }
-
-        // 2. 全息战术激光瞄准线 (起点严格对齐枪口尖端 70px)
+        // 1. 全息战术激光瞄准线 (起点严格对齐炮口尖端 102px)
         if (this.aimGfx) {
             this.aimGfx.clear();
             const maxDist = 950;
-            const startDist = 70;
+            const startDist = 102;
             const startX = Math.cos(this.angle) * startDist;
             const startY = Math.sin(this.angle) * startDist;
             const targetX = Math.cos(this.angle) * maxDist;
@@ -427,216 +376,32 @@ class Cannon {
             this.aimGfx.endFill();
         }
 
-        // 3. 炮台主轴机身 (围绕中心 (0, 0) 精准旋转)
+        // 2. 旋转炮台机身 (围绕中心轴顺畅旋转)
         if (this.turret) {
             this.turret.rotation = this.angle + Math.PI / 2;
 
-            const recoilOffset = this.recoil * 0.6; // 后座力向后偏移 (+Y)
-
-            // 3.1 重型机甲机匣与液压后座阻尼器 (Chassis & Armor Wings)
-            if (this.chassisGfx) {
-                this.chassisGfx.clear();
-
-                // 侧面左右双联液压阻尼器 (带开火活塞受力压缩动画)
-                const pistonP = Math.max(0, this.recoil * 0.45);
-                this.chassisGfx.beginFill(0x64748b, 1);
-                this.chassisGfx.drawRect(-31, 0, 4, 28 - pistonP);
-                this.chassisGfx.drawRect(27, 0, 4, 28 - pistonP);
-                this.chassisGfx.endFill();
-
-                // 侧翼主装甲 (带高光倒角切面与科幻青色装甲缝)
-                this.chassisGfx.beginFill(0x151f2e, 1);
-                this.chassisGfx.lineStyle(1.5, 0x00e5ff, 0.85);
-                this.chassisGfx.drawPolygon([
-                    -20, 16,
-                    -46, 26,
-                    -40, -12,
-                    -18, -4
-                ]);
-                this.chassisGfx.drawPolygon([
-                    20, 16,
-                    46, 26,
-                    40, -12,
-                    18, -4
-                ]);
-                this.chassisGfx.endFill();
-
-                // 侧翼内部层次高光
-                this.chassisGfx.beginFill(0x243247, 0.9);
-                this.chassisGfx.lineStyle(1, 0x475569, 0.7);
-                this.chassisGfx.drawPolygon([
-                    -22, 12,
-                    -38, 20,
-                    -34, -6,
-                    -20, -2
-                ]);
-                this.chassisGfx.drawPolygon([
-                    22, 12,
-                    38, 20,
-                    34, -6,
-                    20, -2
-                ]);
-                this.chassisGfx.endFill();
-
-                // 机匣主体多边形重型装甲板
-                this.chassisGfx.beginFill(0x1e293b, 1);
-                this.chassisGfx.lineStyle(2, 0x00e5ff, 0.9);
-                this.chassisGfx.drawPolygon([
-                    -22, 28,
-                    22, 28,
-                    24, -14,
-                    14, -26,
-                    -14, -26,
-                    -24, -14
-                ]);
-                this.chassisGfx.endFill();
-
-                // 机匣中层金属加强盖板
-                this.chassisGfx.beginFill(0x334155, 1);
-                this.chassisGfx.lineStyle(1, 0x94a3b8, 0.85);
-                this.chassisGfx.drawPolygon([
-                    -16, 22,
-                    16, 22,
-                    17, -10,
-                    10, -20,
-                    -10, -20,
-                    -17, -10
-                ]);
-                this.chassisGfx.endFill();
-
-                // 左右两侧散热格栅排气孔 (发光青色)
-                this.chassisGfx.lineStyle(1.5, 0x00e5ff, 0.8);
-                for (let v = 0; v < 3; v++) {
-                    const vy = 4 + v * 6;
-                    this.chassisGfx.moveTo(-15, vy);
-                    this.chassisGfx.lineTo(-8, vy);
-                    this.chassisGfx.moveTo(8, vy);
-                    this.chassisGfx.lineTo(15, vy);
-                }
-            }
-
-            // 3.2 复合加特林重金属四联炮管群 (带有后座回跳动画与精密机械套箍)
-            if (this.barrelGfx) {
-                this.barrelGfx.clear();
-
-                const by0 = -12 + recoilOffset; // 炮管后部起点
-                const mLenCenter = 68 - recoilOffset; // 主炮管长度
-                const mLenOuter = 56 - recoilOffset;  // 副炮管长度
-
-                // 外侧双联副炮管 (X = -17, +17)
-                [-17, 17].forEach((bx) => {
-                    this.barrelGfx.beginFill(0x0f172a, 1);
-                    this.barrelGfx.lineStyle(1, 0x334155, 1);
-                    this.barrelGfx.drawRect(bx - 3.5, -mLenOuter, 7, mLenOuter + by0);
-                    this.barrelGfx.endFill();
-
-                    // 炮管中心高光倒角拉丝
-                    this.barrelGfx.lineStyle(1, 0x94a3b8, 0.6);
-                    this.barrelGfx.moveTo(bx, by0);
-                    this.barrelGfx.lineTo(bx, -mLenOuter + 4);
-
-                    // 枪口多孔制退消焰器
-                    this.barrelGfx.beginFill(0x1e293b, 1);
-                    this.barrelGfx.lineStyle(1.5, 0x00e5ff, 0.9);
-                    this.barrelGfx.drawRect(bx - 5, -mLenOuter, 10, 6);
-                    this.barrelGfx.endFill();
-
-                    // 枪口内焰发光凹槽
-                    this.barrelGfx.beginFill(0x00e5ff, 0.85);
-                    this.barrelGfx.drawRect(bx - 2, -mLenOuter, 4, 3);
-                    this.barrelGfx.endFill();
-                });
-
-                // 中间双联主加特林重炮管 (X = -7, +7, 笔直延伸至 -68)
-                [-7, 7].forEach((bx) => {
-                    this.barrelGfx.beginFill(0x1e293b, 1);
-                    this.barrelGfx.lineStyle(1.5, 0x475569, 1);
-                    this.barrelGfx.drawRect(bx - 4.5, -mLenCenter, 9, mLenCenter + by0);
-                    this.barrelGfx.endFill();
-
-                    // 金属圆柱反光光泽 (银白高光拉丝)
-                    this.barrelGfx.lineStyle(1.2, 0xcfd8dc, 0.8);
-                    this.barrelGfx.moveTo(bx - 1, by0);
-                    this.barrelGfx.lineTo(bx - 1, -mLenCenter + 8);
-
-                    // 枪身强化金属套箍环 (Breech Sleeve Collars)
-                    [-24 + recoilOffset, -44 + recoilOffset].forEach((ry) => {
-                        this.barrelGfx.beginFill(0x334155, 1);
-                        this.barrelGfx.lineStyle(1, 0xffd700, 0.85);
-                        this.barrelGfx.drawRect(bx - 5.5, ry, 11, 4);
-                        this.barrelGfx.endFill();
-                    });
-
-                    // 重型枪口制退消焰器 (Muzzle Brake)
-                    this.barrelGfx.beginFill(0x0f172a, 1);
-                    this.barrelGfx.lineStyle(1.8, 0x00e5ff, 1);
-                    this.barrelGfx.drawRect(bx - 6, -mLenCenter, 12, 8);
-                    this.barrelGfx.endFill();
-
-                    // 枪口内部高能等离子膛线发光口
-                    this.barrelGfx.beginFill(0x00e5ff, 0.95);
-                    this.barrelGfx.drawRect(bx - 3, -mLenCenter, 6, 4);
-                    this.barrelGfx.endFill();
-                });
-
-                // 炮管横向机械固定连接锁扣 (Bridge Stabilizer)
-                this.barrelGfx.beginFill(0x1e293b, 1);
-                this.barrelGfx.lineStyle(1.2, 0x00e5ff, 0.8);
-                this.barrelGfx.drawRect(-14, -34 + recoilOffset, 28, 5);
-                this.barrelGfx.endFill();
-            }
-
-            // 3.3 超能等离子反应堆核心与双向旋转流光能环
-            if (this.coreGfx) {
-                this.coreGfx.clear();
-
-                // 核心重型防爆约束环底座
-                this.coreGfx.beginFill(0x0b1320, 1);
-                this.coreGfx.lineStyle(2, 0x475569, 1);
-                this.coreGfx.drawCircle(0, 0, 24);
-                this.coreGfx.endFill();
-
-                // 外层能量导流环 (顺时针旋转，3 段电弧)
-                const arcRot1 = this.ringRotation * 2.0;
-                this.coreGfx.lineStyle(2.5, 0x00b0ff, 0.9);
-                for (let a = 0; a < 3; a++) {
-                    const startA = arcRot1 + (a * Math.PI * 2) / 3;
-                    this.coreGfx.arc(0, 0, 19, startA, startA + 1.3);
+            // 2.1 炮台贴图后坐力缩放与轴向位移
+            if (this.cannonSprite) {
+                // 动态绑定最新材质
+                if (window.pixiTextures && window.pixiTextures.cannonTexture && this.cannonSprite.texture !== window.pixiTextures.cannonTexture) {
+                    this.cannonSprite.texture = window.pixiTextures.cannonTexture;
                 }
 
-                // 内层能量聚束环 (逆时针反向高速旋转，3 段电弧)
-                const arcRot2 = this.ringRotation * -2.6;
-                this.coreGfx.lineStyle(2, 0x00e5ff, 0.95);
-                for (let a = 0; a < 3; a++) {
-                    const startA = arcRot2 + (a * Math.PI * 2) / 3;
-                    this.coreGfx.arc(0, 0, 14, startA, startA + 1.2);
-                }
-
-                // 反应堆中心超载高能脉冲球 (随开火与呼吸脉动)
-                const coreBreath = (Math.sin(this.corePulse * 3.0) + 1) * 0.5;
-                const fireFlash = this.recoil * 0.25;
-
-                // 等离子外晕
-                this.coreGfx.beginFill(0x0091ea, 0.45);
-                this.coreGfx.drawCircle(0, 0, 11 + coreBreath * 3 + fireFlash);
-                this.coreGfx.endFill();
-
-                // 等离子聚能球
-                this.coreGfx.beginFill(0x00e5ff, 0.9);
-                this.coreGfx.drawCircle(0, 0, 7 + coreBreath * 2 + fireFlash);
-                this.coreGfx.endFill();
-
-                // 核心超高温白炽光斑 (Singularity)
-                this.coreGfx.beginFill(0xffffff, 1);
-                this.coreGfx.drawCircle(0, 0, 3.5 + coreBreath);
-                this.coreGfx.endFill();
+                // 物理后座力：向后滑动 + 弹性缩放 (Squash & Stretch)
+                const baseW = 94;
+                const baseH = 144;
+                const recoilCompress = this.recoil * 0.45;
+                this.cannonSprite.y = recoilCompress;
+                // 开火时横向微展，纵向后坐压缩
+                this.cannonSprite.width = baseW * (1 + this.recoil * 0.005);
+                this.cannonSprite.height = baseH * (1 - this.recoil * 0.008);
             }
 
-            // 3.4 枪口开火等离子激波与火焰
+            // 2.2 炮口开火等离子激波与火焰 (精准附着于炮口 tip Y = -101.3 + recoilCompress)
             if (this.muzzleFlashGfx) {
                 this.muzzleFlashGfx.clear();
                 if (this.muzzleFlash > 0) {
-                    const mY = -68 + recoilOffset;
+                    const mY = -101.3 + this.recoil * 0.45;
 
                     // 枪口横向扩散等离子激波
                     this.muzzleFlashGfx.lineStyle(2, 0x00e5ff, this.muzzleFlash);
@@ -661,11 +426,14 @@ class Cannon {
             }
         }
 
-        // 4. 绚丽彩虹贯穿激光 (Rainbow Laser Beam)
+        // 3. 绚丽彩虹贯穿激光 (Rainbow Laser Beam)
         if (this.laserGfx) {
             this.laserGfx.clear();
             if (this.isFiringLaser) {
                 const len = 1750;
+                const startDist = 101.3;
+                const startX = Math.cos(this.angle) * startDist;
+                const startY = Math.sin(this.angle) * startDist;
                 const endX = Math.cos(this.angle) * len;
                 const endY = Math.sin(this.angle) * len;
                 const pulse = Math.sin(performance.now() * 0.02) * 6;
@@ -677,21 +445,21 @@ class Cannon {
 
                 // 超广角彩虹等离子光晕 (外层)
                 this.laserGfx.lineStyle(68 + pulse, activeColor, 0.4);
-                this.laserGfx.moveTo(0, 0);
+                this.laserGfx.moveTo(startX, startY);
                 this.laserGfx.lineTo(endX, endY);
 
                 // 彩虹中层高能束 (青蓝金交织)
                 this.laserGfx.lineStyle(42 + pulse * 0.5, 0x00e5ff, 0.65);
-                this.laserGfx.moveTo(0, 0);
+                this.laserGfx.moveTo(startX, startY);
                 this.laserGfx.lineTo(endX, endY);
 
                 this.laserGfx.lineStyle(26, 0xffd700, 0.85);
-                this.laserGfx.moveTo(0, 0);
+                this.laserGfx.moveTo(startX, startY);
                 this.laserGfx.lineTo(endX, endY);
 
                 // 纯白炽光高密核心束
                 this.laserGfx.lineStyle(12, 0xffffff, 0.98);
-                this.laserGfx.moveTo(0, 0);
+                this.laserGfx.moveTo(startX, startY);
                 this.laserGfx.lineTo(endX, endY);
             }
         }

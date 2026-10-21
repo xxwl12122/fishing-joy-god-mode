@@ -45,7 +45,8 @@
         coinAni1: 'images/coinAni1.png',
         coinAni2: 'images/coinAni2.png',
 
-        bg: 'assets/bg.jpg'
+        bg: 'assets/bg.jpg',
+        cannon: 'assets/cannon.png'
     };
 
     class AssetManager {
@@ -201,6 +202,12 @@
             const bgImg = this.get('bg');
             if (bgImg) {
                 window.pixiTextures.bg = PIXI.Texture.from(bgImg);
+            }
+
+            // 8. 终极神级炮台贴图
+            const cannonImg = this.get('cannon');
+            if (cannonImg) {
+                window.pixiTextures.cannonTexture = PIXI.Texture.from(cannonImg);
             }
         }
     }
