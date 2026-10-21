@@ -14,6 +14,11 @@ class GameEngine {
         this.isFrozen = false;
         this.freezeTimer = 0;
 
+        // 顿帧与打击连击系统
+        this.hitstopTimer = 0;
+        this.comboCount = 0;
+        this.lastCatchTime = 0;
+
         // 技能开关与状态
         this.isLockMode = false;
         this.lockedFish = null;
@@ -464,6 +469,11 @@ class GameEngine {
             const dist = this.distToSegment({ x: fish.x, y: fish.y }, { x: lx1, y: ly1 }, { x: lx2, y: ly2 });
             if (dist < fish.width * 0.5 + 40) {
                 fish.takeHit(999);
+                // 激光贯穿大鱼时触发顿帧与打击震颤
+                if (fish.score >= 100 || fish.type === 'golden_dragon') {
+                    this.triggerHitstop(3);
+                    if (window.particleSystem) window.particleSystem.shake(25, 30);
+                }
                 this.catchFish(fish, this.cannon.getCurrentConfig().cost * 5); // 激光触碰瞬间必抓
             }
         }
@@ -477,6 +487,11 @@ class GameEngine {
         return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
     }
 
+    // 街机爽快顿帧效果 (瞬间停滞几帧再爆出特效)
+    triggerHitstop(frames = 3) {
+        this.hitstopTimer = Math.max(this.hitstopTimer, frames);
+    }
+
     // 捕获成功结算
     catchFish(fish, cannonCost) {
         if (fish.isDying || fish.isDead) return;
@@ -485,6 +500,33 @@ class GameEngine {
         const reward = fish.score * cannonCost;
         this.coins += reward;
         window.uiManager.updateCoins(this.coins);
+
+        // 连击计时 (2.2秒内连续捕获触发 Combo 累加)
+        const now = performance.now();
+        if (now - this.lastCatchTime < 2200) {
+            this.comboCount++;
+        } else {
+            this.comboCount = 1;
+        }
+        this.lastCatchTime = now;
+        if (window.uiManager) {
+            window.uiManager.showCombo(this.comboCount);
+        }
+
+        // 极限打击震颤与顿帧 (根据分值动态缩放)
+        if (fish.score >= 300) {
+            // 远古金龙 BOSS 绝杀：剧烈地震感与顿帧
+            if (window.particleSystem) window.particleSystem.shake(44, 46);
+            this.triggerHitstop(4);
+        } else if (fish.score >= 100) {
+            // 霸王大白鲨
+            if (window.particleSystem) window.particleSystem.shake(28, 34);
+            this.triggerHitstop(3);
+        } else if (fish.score >= 60) {
+            // 黄金锤头鲨
+            if (window.particleSystem) window.particleSystem.shake(18, 25);
+            this.triggerHitstop(2);
+        }
 
         // 积累激光充能槽
         const energyGain = fish.score >= 100 ? 25 : (fish.score >= 30 ? 10 : 3);
@@ -505,9 +547,6 @@ class GameEngine {
         // 大奖全屏横幅庆祝
         if (fish.score >= 60) {
             window.uiManager.showBigWin(reward);
-            if (window.particleSystem) {
-                window.particleSystem.shake(12, 25);
-            }
         }
 
         // 特殊鱼连锁机制
@@ -525,9 +564,13 @@ class GameEngine {
     // 炸弹鱼核爆连锁
     triggerBombChain(bx, by, cannonCost) {
         if (window.soundManager) window.soundManager.playBomb();
-        if (window.particleSystem) window.particleSystem.addExplosion(bx, by, 320);
+        if (window.particleSystem) {
+            window.particleSystem.addExplosion(bx, by, 340);
+            window.particleSystem.shake(36, 40);
+        }
+        this.triggerHitstop(4); // 核爆瞬间顿帧停顿
 
-        const radius = 320;
+        const radius = 340;
         for (const f of this.fishes) {
             if (!f.isDead && !f.isDying && f.type !== 'golden_dragon') {
                 const d = Math.hypot(f.x - bx, f.y - by);
@@ -684,10 +727,12 @@ class GameEngine {
     render() {
         this.ctx.clearRect(0, 0, this.width, this.height);
 
-        // 屏幕震动
-        const shake = window.particleSystem ? window.particleSystem.getShakeOffset() : { x: 0, y: 0 };
+        // 极限打击非线性震屏与视角晃动
+        const shake = window.particleSystem ? window.particleSystem.getShakeOffset() : { x: 0, y: 0, rot: 0 };
         this.ctx.save();
-        this.ctx.translate(shake.x, shake.y);
+        this.ctx.translate(this.width / 2 + shake.x, this.height / 2 + shake.y);
+        this.ctx.rotate(shake.rot || 0);
+        this.ctx.translate(-this.width / 2, -this.height / 2);
 
         // 1. 动态海水底层背景与光芒
         if (window.particleSystem) {
@@ -699,7 +744,7 @@ class GameEngine {
             fish.render(this.ctx);
         }
 
-        // 3. 若有锁定目标，绘制科技感锁定瞄准框
+        // 3. 若有锁定目标，绘制未来高科技动态旋转锁定准星与连线
         if (this.lockedFish && !this.lockedFish.isDead && !this.lockedFish.isDying) {
             this.renderLockReticle(this.ctx, this.lockedFish);
         }
@@ -725,30 +770,101 @@ class GameEngine {
         this.ctx.restore();
     }
 
+    // 绘制高科技动态旋转准星 (BOSS 红色高危警告锁定)
     renderLockReticle(ctx, fish) {
+        const isBoss = fish.score >= 100 || fish.type === 'golden_dragon';
+        const color = isBoss ? '#ff1744' : '#00e5ff';
+        const glow = isBoss ? '#ff0033' : '#00b0ff';
+
+        // 1. 绘制从炮台炮口到目标的动态虚线激光指示器
+        ctx.save();
+        ctx.strokeStyle = isBoss ? 'rgba(255, 23, 68, 0.45)' : 'rgba(0, 229, 255, 0.35)';
+        ctx.lineWidth = isBoss ? 2 : 1.5;
+        ctx.setLineDash([8, 6]);
+        ctx.lineDashOffset = -Date.now() * 0.035;
+        ctx.beginPath();
+        ctx.moveTo(this.cannon.x, this.cannon.y);
+        ctx.lineTo(fish.x, fish.y);
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. 目标周围高科技全息多环瞄准框
         ctx.save();
         ctx.translate(fish.x, fish.y);
 
-        const now = Date.now() * 0.005;
+        const r = Math.max(32, fish.width * 0.65);
+        const now = Date.now() * 0.003;
+
+        // BOSS 目标闪烁警报
+        if (isBoss) {
+            const flash = Math.sin(Date.now() * 0.015) > 0;
+            ctx.shadowColor = glow;
+            ctx.shadowBlur = flash ? 25 : 12;
+        } else {
+            ctx.shadowColor = glow;
+            ctx.shadowBlur = 14;
+        }
+
+        // 外层顺时针旋转齿轮网环
+        ctx.save();
         ctx.rotate(now);
-
-        const r = fish.width * 0.65;
-        ctx.strokeStyle = '#ff1744';
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#ff1744';
-        ctx.shadowBlur = 10;
-
-        // 准星十字环
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.2;
         ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
         ctx.stroke();
 
+        // 齿轮凸起标记
+        for (let i = 0; i < 4; i++) {
+            const a = (i * Math.PI) / 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * (r + 4), Math.sin(a) * (r + 4));
+            ctx.lineTo(Math.cos(a) * (r + 14), Math.sin(a) * (r + 14));
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // 中层逆时针虚线环
+        ctx.save();
+        ctx.rotate(-now * 1.4);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([12, 10]);
         ctx.beginPath();
-        ctx.moveTo(-r - 8, 0); ctx.lineTo(-r + 6, 0);
-        ctx.moveTo(r - 6, 0); ctx.lineTo(r + 8, 0);
-        ctx.moveTo(0, -r - 8); ctx.lineTo(0, -r + 6);
-        ctx.moveTo(0, r - 6); ctx.lineTo(0, r + 8);
+        ctx.arc(0, 0, r * 0.75, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.restore();
+
+        // 四角锁定括号 [ ]
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        const bSize = r + 18;
+        const bLen = 12;
+        // 左上
+        ctx.beginPath();
+        ctx.moveTo(-bSize, -bSize + bLen); ctx.lineTo(-bSize, -bSize); ctx.lineTo(-bSize + bLen, -bSize);
+        // 右上
+        ctx.moveTo(bSize - bLen, -bSize); ctx.lineTo(bSize, -bSize); ctx.lineTo(bSize, -bSize + bLen);
+        // 右下
+        ctx.moveTo(bSize, bSize - bLen); ctx.lineTo(bSize, bSize); ctx.lineTo(bSize - bLen, bSize);
+        // 左下
+        ctx.moveTo(-bSize + bLen, bSize); ctx.lineTo(-bSize, bSize); ctx.lineTo(-bSize, bSize - bLen);
+        ctx.stroke();
+
+        // 准星正中十字
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-6, 0); ctx.lineTo(6, 0);
+        ctx.moveTo(0, -6); ctx.lineTo(0, 6);
+        ctx.stroke();
+
+        // 目标警报文字标签
+        ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = isBoss ? '#ff1744' : '#00e5ff';
+        const labelText = isBoss ? '⚠️ [LOCKED: BOSS] ⚠️' : `LOCKED [x${fish.score}]`;
+        ctx.fillText(labelText, 0, -r - 18);
 
         ctx.restore();
     }
@@ -768,6 +884,14 @@ class GameEngine {
     }
 
     gameLoop(timestamp) {
+        // 街机爽快顿帧停顿 (Hitstop Crunch)
+        if (this.hitstopTimer > 0) {
+            this.hitstopTimer--;
+            this.render(); // 顿帧时只做静态定格绘制，暂停物理位移
+            requestAnimationFrame((t) => this.gameLoop(t));
+            return;
+        }
+
         this.update();
         this.render();
         requestAnimationFrame((t) => this.gameLoop(t));

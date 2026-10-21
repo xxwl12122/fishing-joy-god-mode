@@ -1,17 +1,22 @@
 /**
  * 捕鱼达人 - Web Audio API 音效与音乐合成器
- * 100% 纯前端程序合成，无需任何外部音频文件，永不丢失资源
+ * 100% 纯前端程序合成，内置动态压缩器防爆音、音调递增连击音效
  */
 class SoundManager {
     constructor() {
         this.ctx = null;
         this.sfxVolume = 0.8;
-        this.bgmVolume = 0.35;
+        this.bgmVolume = 0.3;
         this.isMuted = false;
         this.isBgmPlaying = false;
         this.bgmTimer = null;
         this.bgmStep = 0;
         this.initialized = false;
+
+        // 连击音调系统
+        this.comboCatchCount = 0;
+        this.lastCatchSoundTime = 0;
+        this.lastShootSoundTime = 0;
     }
 
     init() {
@@ -19,17 +24,29 @@ class SoundManager {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             this.ctx = new AudioContext();
+
+            // 动态压缩器 (DynamicsCompressor) 杜绝高频极速发炮时声音重叠导致的破音/爆音
+            this.compressor = this.ctx.createDynamicsCompressor();
+            this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
+            this.compressor.knee.setValueAtTime(24, this.ctx.currentTime);
+            this.compressor.ratio.setValueAtTime(12, this.ctx.currentTime);
+            this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+            this.compressor.release.setValueAtTime(0.12, this.ctx.currentTime);
+
             this.masterGain = this.ctx.createGain();
             this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
-            this.masterGain.connect(this.ctx.destination);
 
             this.sfxGain = this.ctx.createGain();
             this.sfxGain.gain.setValueAtTime(this.sfxVolume, this.ctx.currentTime);
-            this.sfxGain.connect(this.masterGain);
 
             this.bgmGain = this.ctx.createGain();
             this.bgmGain.gain.setValueAtTime(this.bgmVolume, this.ctx.currentTime);
-            this.bgmGain.connect(this.masterGain);
+
+            // 连接拓扑: [SFX, BGM] -> compressor -> masterGain -> destination
+            this.sfxGain.connect(this.compressor);
+            this.bgmGain.connect(this.compressor);
+            this.compressor.connect(this.masterGain);
+            this.masterGain.connect(this.ctx.destination);
 
             this.initialized = true;
             this.startBgm();
@@ -68,38 +85,45 @@ class SoundManager {
         }
     }
 
-    // 发炮音效 (根据炮台等级有不同质感)
+    // 发炮音效 (极速狂暴下智能限频防爆音，保持清脆机械律动)
     playShoot(level = 1) {
         if (!this.ctx || this.isMuted) return;
         this.resume();
 
-        const now = this.ctx.currentTime;
+        const now = performance.now();
+        // 限制发声最小间隔为 65ms，即使无敌版 35ms 连发也不出现杂音重叠
+        if (now - this.lastShootSoundTime < 65) {
+            return;
+        }
+        this.lastShootSoundTime = now;
+
+        const ctxTime = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
         // 炮弹低音冲击 + 激光/能量滑音
-        const baseFreq = 160 + level * 25;
+        const baseFreq = 160 + level * 20;
         osc.type = level > 5 ? 'sawtooth' : 'triangle';
-        osc.frequency.setValueAtTime(baseFreq, now);
-        osc.frequency.exponentialRampToValueAtTime(45, now + 0.12);
+        osc.frequency.setValueAtTime(baseFreq, ctxTime);
+        osc.frequency.exponentialRampToValueAtTime(50, ctxTime + 0.1);
 
-        gain.gain.setValueAtTime(0.35 + Math.min(level * 0.03, 0.3), now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        gain.gain.setValueAtTime(0.28, ctxTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctxTime + 0.11);
 
         osc.connect(gain);
         gain.connect(this.sfxGain);
 
-        osc.start(now);
-        osc.stop(now + 0.14);
+        osc.start(ctxTime);
+        osc.stop(ctxTime + 0.11);
 
-        // 如果是大炮，加一层噪声轰鸣
-        if (level >= 4) {
-            this.playNoiseThump(0.08, 0.2);
+        // 高阶炮附加低频气动声
+        if (level >= 6) {
+            this.playNoiseThump(0.06, 0.18);
         }
     }
 
-    playNoiseThump(duration = 0.1, vol = 0.2) {
-        const bufferSize = this.ctx.sampleRate * duration;
+    playNoiseThump(duration = 0.08, vol = 0.18) {
+        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -110,8 +134,8 @@ class SoundManager {
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(300, this.ctx.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + duration);
+        filter.frequency.setValueAtTime(260, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + duration);
 
         const gain = this.ctx.createGain();
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
@@ -133,49 +157,61 @@ class SoundManager {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
-        osc.frequency.exponentialRampToValueAtTime(200, now + 0.18);
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.06);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.15);
 
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
         osc.connect(gain);
         gain.connect(this.sfxGain);
 
         osc.start(now);
-        osc.stop(now + 0.18);
+        osc.stop(now + 0.15);
     }
 
-    // 金币清脆掉落声音
+    // 金币清脆掉落声音 (带递增连击音调)
     playCoin(index = 0) {
         if (!this.ctx || this.isMuted) return;
         this.resume();
-        const now = this.ctx.currentTime + index * 0.04;
 
+        const now = this.ctx.currentTime + index * 0.035;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
 
-        // 清脆金币频段 (约 1800Hz - 2600Hz)
-        const freqs = [1975, 2349, 2793, 3135, 3520];
-        const f = freqs[Math.min(index, freqs.length - 1)];
+        // 连击音调阶梯 (五声音阶升调)
+        const scale = [1975.53, 2217.46, 2489.02, 2793.83, 3135.96, 3520.00, 3951.07, 4434.92];
+        const pitchIdx = (this.comboCatchCount + index) % scale.length;
+        const f = scale[pitchIdx];
+
         osc.frequency.setValueAtTime(f, now);
 
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
 
         osc.connect(gain);
         gain.connect(this.sfxGain);
 
         osc.start(now);
-        osc.stop(now + 0.12);
+        osc.stop(now + 0.1);
     }
 
-    // 捕获鱼儿奖励音效 (琶音和弦)
+    // 捕获鱼儿奖励音效 (琶音和弦 + 音调累加)
     playCatch(multiplier = 2) {
         if (!this.ctx || this.isMuted) return;
         this.resume();
+
+        const nowPerf = performance.now();
+        if (nowPerf - this.lastCatchSoundTime < 2000) {
+            this.comboCatchCount++;
+        } else {
+            this.comboCatchCount = 0;
+        }
+        this.lastCatchSoundTime = nowPerf;
+
+        const pitchShift = Math.min(10, this.comboCatchCount) * 40;
 
         const notes = multiplier >= 50 ? [523.25, 659.25, 783.99, 1046.5, 1318.5] :
                       multiplier >= 15 ? [523.25, 659.25, 783.99, 1046.5] :
@@ -185,45 +221,43 @@ class SoundManager {
         notes.forEach((freq, idx) => {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
-            const t = baseTime + idx * 0.06;
+            const t = baseTime + idx * 0.05;
 
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.setValueAtTime(freq + pitchShift, t);
 
-            gain.gain.setValueAtTime(0.3, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+            gain.gain.setValueAtTime(0.24, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
 
             osc.connect(gain);
             gain.connect(this.sfxGain);
 
             osc.start(t);
-            osc.stop(t + 0.25);
+            osc.stop(t + 0.22);
         });
     }
 
-    // 炸弹爆炸音效
+    // 炸弹爆炸音效 (带重低音与轰鸣)
     playBomb() {
         if (!this.ctx || this.isMuted) return;
         this.resume();
         const now = this.ctx.currentTime;
 
-        // 超重低音震动
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(120, now);
-        osc.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(25, now + 0.65);
 
-        gain.gain.setValueAtTime(0.7, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
 
         osc.connect(gain);
         gain.connect(this.sfxGain);
         osc.start(now);
-        osc.stop(now + 0.6);
+        osc.stop(now + 0.65);
 
-        // 巨响噪声
-        this.playNoiseThump(0.5, 0.6);
+        this.playNoiseThump(0.55, 0.7);
     }
 
     // 冰封音效
@@ -236,16 +270,16 @@ class SoundManager {
         const gain = this.ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(1200, now);
-        osc.frequency.exponentialRampToValueAtTime(2400, now + 0.15);
-        osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
+        osc.frequency.exponentialRampToValueAtTime(2600, now + 0.15);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.45);
 
         gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
         osc.connect(gain);
         gain.connect(this.sfxGain);
         osc.start(now);
-        osc.stop(now + 0.4);
+        osc.stop(now + 0.45);
     }
 
     // 闪电链音效
@@ -262,7 +296,7 @@ class SoundManager {
             osc.frequency.setValueAtTime(800 + Math.random() * 600, t);
             osc.frequency.exponentialRampToValueAtTime(150, t + 0.08);
 
-            gain.gain.setValueAtTime(0.3, t);
+            gain.gain.setValueAtTime(0.28, t);
             gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
 
             osc.connect(gain);
@@ -281,8 +315,8 @@ class SoundManager {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.linearRampToValueAtTime(1200, now + 0.4);
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(1400, now + 0.35);
         osc.frequency.exponentialRampToValueAtTime(100, now + 1.2);
 
         gain.gain.setValueAtTime(0.4, now);
@@ -329,8 +363,6 @@ class SoundManager {
     scheduleBgmLoop() {
         if (!this.isBgmPlaying) return;
 
-        // 五声音阶带来宁静空灵的大海意境 (F调五声: F, G, A, C, D)
-        const scale = [174.61, 196.00, 220.00, 261.63, 293.66, 349.23, 392.00, 440.00, 523.25];
         const chords = [
             [174.61, 220.00, 261.63, 349.23], // F major
             [146.83, 174.61, 220.00, 293.66], // D minor
@@ -353,7 +385,7 @@ class SoundManager {
             padOsc.type = 'sine';
             padOsc.frequency.setValueAtTime(currentChord[0] * 0.5, now);
             padGain.gain.setValueAtTime(0.001, now);
-            padGain.gain.linearRampToValueAtTime(0.12, now + 0.8);
+            padGain.gain.linearRampToValueAtTime(0.1, now + 0.8);
             padGain.gain.linearRampToValueAtTime(0.001, now + 2.3);
 
             padOsc.connect(padGain);
@@ -372,7 +404,7 @@ class SoundManager {
                 noteOsc.frequency.setValueAtTime(noteFreq, noteTime);
 
                 noteGain.gain.setValueAtTime(0.001, noteTime);
-                noteGain.gain.linearRampToValueAtTime(0.06, noteTime + 0.1);
+                noteGain.gain.linearRampToValueAtTime(0.05, noteTime + 0.1);
                 noteGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.6);
 
                 noteOsc.connect(noteGain);

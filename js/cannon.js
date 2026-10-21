@@ -33,18 +33,45 @@ class Bullet {
         this.maxBounces = 5;
         this.isDead = false;
         this.trail = [];
+        this.isHighTier = levelConfig.level >= 6; // 高阶神级炮台标识
+        this.sparkParticles = [];
     }
 
     update(screenWidth, screenHeight) {
         if (this.isDead) return;
 
-        // 保存拖尾
-        this.trail.push({ x: this.x, y: this.y, alpha: 0.8 });
-        if (this.trail.length > 6) {
+        // 保存拖尾 (高阶炮台更长更粗)
+        const maxTrailLength = this.isHighTier ? 12 : 6;
+        this.trail.push({ x: this.x, y: this.y, alpha: 0.85 });
+        if (this.trail.length > maxTrailLength) {
             this.trail.shift();
         }
         for (const t of this.trail) {
-            t.alpha *= 0.82;
+            t.alpha *= 0.85;
+        }
+
+        // 高阶炮台生成火焰与电弧火花粒子
+        if (this.isHighTier && Math.random() < 0.75) {
+            this.sparkParticles.push({
+                x: this.x + (Math.random() - 0.5) * 8,
+                y: this.y + (Math.random() - 0.5) * 8,
+                vx: -this.vx * 0.2 + (Math.random() - 0.5) * 3,
+                vy: -this.vy * 0.2 + (Math.random() - 0.5) * 3,
+                size: 2 + Math.random() * 3,
+                alpha: 1,
+                color: this.levelConfig.level >= 9 ? '#ff0055' : (this.levelConfig.level >= 8 ? '#ffea00' : '#ff3d00')
+            });
+        }
+
+        // 更新火花粒子
+        for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
+            const p = this.sparkParticles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 0.08;
+            if (p.alpha <= 0) {
+                this.sparkParticles.splice(i, 1);
+            }
         }
 
         // 若开启锁定目标，子弹智能微调追踪锁定鱼
@@ -92,35 +119,75 @@ class Bullet {
     render(ctx) {
         if (this.isDead) return;
 
-        // 渲染发光拖尾
+        // 1. 渲染高阶火花与电弧粒子
+        if (this.sparkParticles && this.sparkParticles.length > 0) {
+            for (const sp of this.sparkParticles) {
+                ctx.save();
+                ctx.globalAlpha = sp.alpha;
+                ctx.fillStyle = sp.color;
+                ctx.shadowColor = sp.color;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // 2. 渲染高能发光拖尾 (高阶炮台多层烈焰等离子光晕)
         for (let i = 0; i < this.trail.length; i++) {
             const t = this.trail[i];
+            const ratio = i / this.trail.length;
             ctx.save();
-            ctx.globalAlpha = t.alpha * 0.5;
+            ctx.globalAlpha = t.alpha * (this.isHighTier ? 0.75 : 0.5);
             ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = this.isHighTier ? 16 : 8;
+
+            const trailRadius = this.radius * (this.isHighTier ? (0.5 + ratio * 0.9) : (0.3 + ratio * 0.7));
             ctx.beginPath();
-            ctx.arc(t.x, t.y, this.radius * (0.3 + (i / this.trail.length) * 0.7), 0, Math.PI * 2);
+            ctx.arc(t.x, t.y, trailRadius, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
 
-        // 渲染弹丸本体
+        // 3. 渲染弹丸本体 (高阶炮台带有能量光环与电弧)
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
         ctx.shadowColor = this.color;
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = this.isHighTier ? 22 : 12;
+
+        if (this.isHighTier) {
+            // 外层能量激波环
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 旋转电弧
+            const arcTime = Date.now() * 0.01;
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 1.8, arcTime, arcTime + Math.PI * 0.8);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 1.8, arcTime + Math.PI, arcTime + Math.PI * 1.8);
+            ctx.stroke();
+        }
 
         // 椭圆流光弹丸
         const grad = ctx.createRadialGradient(2, 0, 1, 0, 0, this.radius);
         grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.4, this.color);
+        grad.addColorStop(0.35, this.color);
         grad.addColorStop(1, '#000033');
         ctx.fillStyle = grad;
 
         ctx.beginPath();
-        ctx.ellipse(0, 0, this.radius * 1.4, this.radius * 0.9, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, this.radius * (this.isHighTier ? 1.6 : 1.4), this.radius * 0.95, 0, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();

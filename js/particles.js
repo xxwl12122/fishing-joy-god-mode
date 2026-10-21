@@ -1,5 +1,5 @@
 /**
- * 捕鱼达人 - 粒子特效、水下氛围与视觉渲染系统
+ * 捕鱼达人 - 顶级街机视觉粒子系统、震屏、金币轨迹与多重冲击波渔网
  */
 
 class ParticleSystem {
@@ -11,7 +11,10 @@ class ParticleSystem {
         this.explosions = [];
         this.lightnings = [];
         this.seaweeds = [];
+        this.sparkles = [];
+
         this.shakeTimer = 0;
+        this.maxShakeTimer = 1;
         this.shakeIntensity = 0;
         this.freezeAlpha = 0;
         this.causticOffset = 0;
@@ -34,10 +37,11 @@ class ParticleSystem {
         }
     }
 
-    // 触发屏幕震动
-    shake(intensity = 10, duration = 20) {
-        this.shakeIntensity = intensity;
-        this.shakeTimer = duration;
+    // 强化屏幕震动 (根据鱼种分值动态缩放)
+    shake(intensity = 15, duration = 25) {
+        this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+        this.shakeTimer = Math.max(this.shakeTimer, duration);
+        this.maxShakeTimer = Math.max(this.maxShakeTimer, this.shakeTimer);
     }
 
     // 添加气泡
@@ -54,12 +58,12 @@ class ParticleSystem {
         });
     }
 
-    // 添加金币飞行动画 (从鱼儿死掉的位置飞向炮台金币栏)
+    // 强化金币飞行动画 (增加光效拖尾与到达 UI 栏受击震颤)
     addCoin(startX, startY, targetX, targetY, value = 10, count = 5) {
-        const coinCount = Math.min(Math.max(3, Math.floor(value / 5)), 18);
+        const coinCount = Math.min(Math.max(4, Math.floor(value / 6)), 20);
         for (let i = 0; i < coinCount; i++) {
             const spreadAngle = Math.random() * Math.PI * 2;
-            const spreadDist = 20 + Math.random() * 60;
+            const spreadDist = 25 + Math.random() * 75;
             const burstX = startX + Math.cos(spreadAngle) * spreadDist;
             const burstY = startY + Math.sin(spreadAngle) * spreadDist;
 
@@ -73,30 +77,50 @@ class ParticleSystem {
                 targetX: targetX,
                 targetY: targetY,
                 progress: 0,
-                speed: 0.02 + Math.random() * 0.015,
-                delay: i * 3,
+                speed: 0.024 + Math.random() * 0.016,
+                delay: i * 2.5,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: 0.15 + Math.random() * 0.1,
-                size: 16 + (value >= 100 ? 6 : 0),
-                isBig: value >= 100,
-                soundIndex: i
+                rotSpeed: 0.18 + Math.random() * 0.12,
+                size: 16 + (value >= 100 ? 8 : (value >= 50 ? 4 : 0)),
+                isBig: value >= 60,
+                soundIndex: i,
+                trail: [] // 金币拖尾光粒
             });
         }
     }
 
-    // 添加渔网展开特效
+    // 添加华丽多层光环扩散渔网与水波纹
     addNet(x, y, radius, color = '#00ffff') {
         this.nets.push({
             x: x,
             y: y,
             maxRadius: radius,
-            radius: 5,
+            radius: 8,
             opacity: 1,
             color: color,
             rotation: Math.random() * Math.PI * 2,
-            rotSpeed: 0.02,
-            duration: 25,
-            life: 25
+            rotSpeed: 0.03,
+            duration: 28,
+            life: 28,
+            // 多层冲击波光环
+            ripples: [
+                { r: 4, speed: radius * 0.058, max: radius * 1.35, alpha: 0.8 },
+                { r: 2, speed: radius * 0.045, max: radius * 1.15, alpha: 0.95 },
+                { r: 1, speed: radius * 0.032, max: radius * 0.9, alpha: 1 }
+            ],
+            // 能量飞溅粒子
+            sparks: Array.from({ length: 16 }, () => {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = (radius * 0.04) * (0.6 + Math.random() * 0.8);
+                return {
+                    x: 0,
+                    y: 0,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd,
+                    size: 2.5 + Math.random() * 3.5,
+                    alpha: 1
+                };
+            })
         });
     }
 
@@ -107,32 +131,32 @@ class ParticleSystem {
             y: y,
             score: score,
             opacity: 1,
-            scale: isBoss ? 1.6 : 1.0,
-            velocityY: -1.8,
-            life: 45,
+            scale: isBoss ? 1.8 : 1.1,
+            velocityY: -2.2,
+            life: 48,
             isBoss: isBoss
         });
     }
 
     // 爆炸特效
-    addExplosion(x, y, radius = 220) {
+    addExplosion(x, y, radius = 240) {
         this.explosions.push({
             x: x,
             y: y,
             radius: 0,
             maxRadius: radius,
             opacity: 1,
-            particles: Array.from({ length: 40 }, () => ({
+            particles: Array.from({ length: 50 }, () => ({
                 x: x,
                 y: y,
-                vx: (Math.random() - 0.5) * 14,
-                vy: (Math.random() - 0.5) * 14,
-                size: 3 + Math.random() * 7,
-                color: ['#ff4400', '#ffcc00', '#ffffff', '#ff0055'][Math.floor(Math.random() * 4)],
-                life: 35
+                vx: (Math.random() - 0.5) * 16,
+                vy: (Math.random() - 0.5) * 16,
+                size: 3 + Math.random() * 8,
+                color: ['#ff4400', '#ffcc00', '#ffffff', '#ff0055', '#ff9100'][Math.floor(Math.random() * 5)],
+                life: 38
             }))
         });
-        this.shake(18, 30);
+        this.shake(32, 40);
     }
 
     // 闪电链特效
@@ -140,14 +164,17 @@ class ParticleSystem {
         this.lightnings.push({
             points: points,
             alpha: 1,
-            life: 20
+            life: 22
         });
     }
 
     update(isFrozen = false) {
-        // 屏幕震动衰减
+        // 屏幕震动非线性衰减
         if (this.shakeTimer > 0) {
             this.shakeTimer--;
+            if (this.shakeTimer === 0) {
+                this.shakeIntensity = 0;
+            }
         }
 
         // 自然生成上升气泡
@@ -165,19 +192,35 @@ class ParticleSystem {
             }
         }
 
-        // 渔网更新
+        // 渔网多层冲击波与粒子更新
         for (let i = this.nets.length - 1; i >= 0; i--) {
             const n = this.nets[i];
             n.life--;
-            n.radius += (n.maxRadius - n.radius) * 0.28;
+            n.radius += (n.maxRadius - n.radius) * 0.26;
             n.rotation += n.rotSpeed;
             n.opacity = n.life / n.duration;
+
+            // 扩展光环
+            for (const rip of n.ripples) {
+                rip.r += rip.speed;
+                rip.alpha = Math.max(0, 1 - (rip.r / rip.max));
+            }
+
+            // 火花粒子飞散
+            for (const sp of n.sparks) {
+                sp.x += sp.vx;
+                sp.y += sp.vy;
+                sp.vx *= 0.95;
+                sp.vy *= 0.95;
+                sp.alpha = n.opacity;
+            }
+
             if (n.life <= 0) {
                 this.nets.splice(i, 1);
             }
         }
 
-        // 金币更新 (两段式贝塞尔飞行动画：先向四周炸开，再加速吸向金币栏)
+        // 金币更新 (两段式贝塞尔飞行动画 + 璀璨尾迹)
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const c = this.coins[i];
             if (c.delay > 0) {
@@ -185,29 +228,39 @@ class ParticleSystem {
                 continue;
             }
 
+            // 保存光效拖尾
+            c.trail.push({ x: c.x, y: c.y, alpha: 0.85, size: c.size * 0.45 });
+            if (c.trail.length > 8) {
+                c.trail.shift();
+            }
+            for (const tr of c.trail) {
+                tr.alpha *= 0.82;
+            }
+
             c.progress += c.speed;
             c.rotation += c.rotSpeed;
 
-            if (c.progress < 0.3) {
-                // 第一阶段：向外爆发
-                const p = c.progress / 0.3;
+            if (c.progress < 0.28) {
+                const p = c.progress / 0.28;
                 c.x = c.startX + (c.burstX - c.startX) * Math.sin(p * Math.PI * 0.5);
                 c.y = c.startY + (c.burstY - c.startY) * Math.sin(p * Math.PI * 0.5);
             } else {
-                // 第二阶段：二次贝塞尔加速吸入
-                const t = (c.progress - 0.3) / 0.7;
-                const easeT = t * t; // 加速度曲线
-                const midX = (c.burstX + c.targetX) * 0.5 + 80;
-                const midY = (c.burstY + c.targetY) * 0.5 - 60;
-                
+                const t = (c.progress - 0.28) / 0.72;
+                const easeT = t * t * t; // 强力加速度向 UI 栏飞吸
+                const midX = (c.burstX + c.targetX) * 0.5 + 90;
+                const midY = (c.burstY + c.targetY) * 0.5 - 80;
+
                 c.x = (1 - easeT) * (1 - easeT) * c.burstX + 2 * (1 - easeT) * easeT * midX + easeT * easeT * c.targetX;
                 c.y = (1 - easeT) * (1 - easeT) * c.burstY + 2 * (1 - easeT) * easeT * midY + easeT * easeT * c.targetY;
             }
 
             if (c.progress >= 1) {
-                // 击中金币栏，播放清脆声
+                // 击中金币栏：触发金币音调音效 + UI 弹性受击缩放反馈！
                 if (window.soundManager) {
-                    window.soundManager.playCoin(c.soundIndex % 4);
+                    window.soundManager.playCoin(c.soundIndex % 8);
+                }
+                if (window.uiManager) {
+                    window.uiManager.triggerCoinBounce();
                 }
                 this.coins.splice(i, 1);
             }
@@ -218,7 +271,7 @@ class ParticleSystem {
             const s = this.scores[i];
             s.y += s.velocityY;
             s.life--;
-            s.opacity = Math.max(0, s.life / 45);
+            s.opacity = Math.max(0, s.life / 48);
             if (s.life <= 0) {
                 this.scores.splice(i, 1);
             }
@@ -227,13 +280,13 @@ class ParticleSystem {
         // 爆炸
         for (let i = this.explosions.length - 1; i >= 0; i--) {
             const ex = this.explosions[i];
-            ex.radius += (ex.maxRadius - ex.radius) * 0.22;
-            ex.opacity *= 0.92;
+            ex.radius += (ex.maxRadius - ex.radius) * 0.25;
+            ex.opacity *= 0.91;
             for (const p of ex.particles) {
                 p.x += p.vx;
                 p.y += p.vy;
-                p.vx *= 0.94;
-                p.vy *= 0.94;
+                p.vx *= 0.93;
+                p.vy *= 0.93;
                 p.life--;
             }
             if (ex.opacity < 0.05) {
@@ -245,7 +298,7 @@ class ParticleSystem {
         for (let i = this.lightnings.length - 1; i >= 0; i--) {
             const lt = this.lightnings[i];
             lt.life--;
-            lt.alpha = lt.life / 20;
+            lt.alpha = lt.life / 22;
             if (lt.life <= 0) {
                 this.lightnings.splice(i, 1);
             }
@@ -264,7 +317,7 @@ class ParticleSystem {
         ctx.fillStyle = oceanGrad;
         ctx.fillRect(0, 0, width, height);
 
-        // 2. 顶部照射而下的动态阳光束 (God Rays / Caustics)
+        // 2. 顶部照射而下的动态阳光束
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         for (let i = 0; i < 6; i++) {
@@ -334,7 +387,6 @@ class ParticleSystem {
             ctx.fill();
             ctx.stroke();
 
-            // 气泡高光小圆点
             ctx.fillStyle = `rgba(255, 255, 255, ${b.opacity * 0.8})`;
             ctx.beginPath();
             ctx.arc(b.x - b.radius * 0.35, b.y - b.radius * 0.35, b.radius * 0.25, 0, Math.PI * 2);
@@ -344,31 +396,71 @@ class ParticleSystem {
     }
 
     renderForeground(ctx, width, height) {
-        // 渲染渔网
+        // 渲染华丽多重冲击波渔网与水波纹扩散
         for (const n of this.nets) {
             ctx.save();
             ctx.translate(n.x, n.y);
+
+            // 1. 水波纹冲击波扩散热浪 (Water Distortion Ripples)
+            for (const rip of n.ripples) {
+                if (rip.alpha <= 0.01) continue;
+                ctx.save();
+                ctx.strokeStyle = `rgba(0, 240, 255, ${rip.alpha * 0.6})`;
+                ctx.lineWidth = 4 * rip.alpha;
+                ctx.shadowColor = n.color;
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.arc(0, 0, rip.r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 2. 飞散火花闪光
+            for (const sp of n.sparks) {
+                if (sp.alpha <= 0.01) continue;
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = n.color;
+                ctx.shadowBlur = 12;
+                ctx.globalAlpha = sp.alpha;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // 3. 几何能量菱形光网
             ctx.rotate(n.rotation);
             ctx.globalAlpha = n.opacity;
 
-            // 外部冲击光环
+            // 中心耀斑
+            const centerGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, n.radius * 0.5);
+            centerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+            centerGrad.addColorStop(0.5, n.color);
+            centerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = centerGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, n.radius * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 外部主光环
             ctx.strokeStyle = n.color;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3.5;
             ctx.shadowColor = n.color;
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 22;
             ctx.beginPath();
             ctx.arc(0, 0, n.radius, 0, Math.PI * 2);
             ctx.stroke();
 
             // 内部同心圆网
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 1.8;
             ctx.beginPath();
-            ctx.arc(0, 0, n.radius * 0.65, 0, Math.PI * 2);
-            ctx.arc(0, 0, n.radius * 0.35, 0, Math.PI * 2);
+            ctx.arc(0, 0, n.radius * 0.68, 0, Math.PI * 2);
+            ctx.arc(0, 0, n.radius * 0.36, 0, Math.PI * 2);
             ctx.stroke();
 
             // 辐射网格经纬线
-            const spokes = 12;
+            const spokes = 14;
             for (let i = 0; i < spokes; i++) {
                 const angle = (i * Math.PI * 2) / spokes;
                 ctx.beginPath();
@@ -377,13 +469,13 @@ class ParticleSystem {
                 ctx.stroke();
             }
 
-            // 交叉菱形网节点发光圆点
+            // 交叉网格节点发光圆点
             ctx.fillStyle = '#ffffff';
             for (let i = 0; i < spokes; i++) {
                 const angle = (i * Math.PI * 2) / spokes;
                 ctx.beginPath();
-                ctx.arc(Math.cos(angle) * n.radius * 0.65, Math.sin(angle) * n.radius * 0.65, 3, 0, Math.PI * 2);
-                ctx.arc(Math.cos(angle) * n.radius, Math.sin(angle) * n.radius, 3.5, 0, Math.PI * 2);
+                ctx.arc(Math.cos(angle) * n.radius * 0.68, Math.sin(angle) * n.radius * 0.68, 3.5, 0, Math.PI * 2);
+                ctx.arc(Math.cos(angle) * n.radius, Math.sin(angle) * n.radius, 4, 0, Math.PI * 2);
                 ctx.fill();
             }
 
@@ -395,21 +487,19 @@ class ParticleSystem {
             ctx.save();
             ctx.globalAlpha = ex.opacity;
 
-            // 冲击波
             const grad = ctx.createRadialGradient(ex.x, ex.y, ex.radius * 0.2, ex.x, ex.y, ex.radius);
-            grad.addColorStop(0, 'rgba(255, 230, 150, 0.8)');
-            grad.addColorStop(0.5, 'rgba(255, 100, 30, 0.5)');
+            grad.addColorStop(0, 'rgba(255, 230, 150, 0.85)');
+            grad.addColorStop(0.5, 'rgba(255, 100, 30, 0.6)');
             grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // 飞散碎片火花
             for (const p of ex.particles) {
                 ctx.fillStyle = p.color;
                 ctx.shadowColor = p.color;
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 12;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
@@ -423,8 +513,8 @@ class ParticleSystem {
             ctx.globalAlpha = lt.alpha;
             ctx.strokeStyle = '#00ffff';
             ctx.shadowColor = '#00ffff';
-            ctx.shadowBlur = 14;
-            ctx.lineWidth = 3;
+            ctx.shadowBlur = 16;
+            ctx.lineWidth = 3.5;
 
             for (let i = 0; i < lt.points.length - 1; i++) {
                 const p1 = lt.points[i];
@@ -434,18 +524,38 @@ class ParticleSystem {
             ctx.restore();
         }
 
-        // 渲染 3D 旋转金币
+        // 渲染 3D 旋转金币与光效拖尾
         for (const c of this.coins) {
             if (c.delay > 0) continue;
+
+            // 绘制金色粒子尾迹
+            if (c.trail && c.trail.length > 0) {
+                for (let t = 0; t < c.trail.length; t++) {
+                    const tr = c.trail[t];
+                    ctx.save();
+                    ctx.globalAlpha = tr.alpha * 0.6;
+                    ctx.fillStyle = '#ffd700';
+                    ctx.shadowColor = '#ffea00';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(tr.x, tr.y, tr.size * (0.4 + (t / c.trail.length) * 0.6), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // 金币本体
             ctx.save();
             ctx.translate(c.x, c.y);
-            const scaleX = Math.cos(c.rotation); // 模拟 3D 旋转翻转
+            const scaleX = Math.cos(c.rotation);
             ctx.scale(scaleX, 1);
 
-            // 金币外圆
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 14;
+
             const coinGrad = ctx.createRadialGradient(-2, -2, 2, 0, 0, c.size);
             coinGrad.addColorStop(0, '#fff6a9');
-            coinGrad.addColorStop(0.4, '#ffd700');
+            coinGrad.addColorStop(0.35, '#ffd700');
             coinGrad.addColorStop(0.85, '#d49b00');
             coinGrad.addColorStop(1, '#8f5c00');
 
@@ -454,13 +564,12 @@ class ParticleSystem {
             ctx.arc(0, 0, c.size, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // 内部方孔或金币图案
             ctx.strokeStyle = '#b8860b';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 1.6;
             ctx.strokeRect(-c.size * 0.35, -c.size * 0.35, c.size * 0.7, c.size * 0.7);
 
             ctx.restore();
@@ -473,27 +582,25 @@ class ParticleSystem {
             ctx.scale(s.scale, s.scale);
             ctx.globalAlpha = s.opacity;
 
-            ctx.font = 'bold 26px "Microsoft YaHei", sans-serif';
+            ctx.font = 'bold 28px "Microsoft YaHei", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // 发光边框
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 6;
             ctx.lineJoin = 'round';
             const text = (s.isBoss ? '👑 +' : '+') + s.score;
             ctx.strokeText(text, 0, 0);
 
-            // 金光渐变填充
             const grad = ctx.createLinearGradient(0, -15, 0, 15);
             if (s.isBoss) {
                 grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(0.5, '#ff3366');
+                grad.addColorStop(0.4, '#ff1744');
                 grad.addColorStop(1, '#ffea00');
             } else {
                 grad.addColorStop(0, '#ffffff');
                 grad.addColorStop(0.4, '#ffea00');
-                grad.addColorStop(1, '#ff8800');
+                grad.addColorStop(1, '#ff6d00');
             }
             ctx.fillStyle = grad;
             ctx.fillText(text, 0, 0);
@@ -518,13 +625,16 @@ class ParticleSystem {
         ctx.stroke();
     }
 
-    // 获取当前震动偏移
+    // 强化非线性震屏偏移 (支持轻微旋转晃动，带来极具临场感的大地震颤)
     getShakeOffset() {
-        if (this.shakeTimer <= 0) return { x: 0, y: 0 };
-        const intensity = (this.shakeTimer / 20) * this.shakeIntensity;
+        if (this.shakeTimer <= 0) return { x: 0, y: 0, rot: 0 };
+        const progress = this.shakeTimer / this.maxShakeTimer;
+        // 二次方非线性衰减
+        const power = progress * progress * this.shakeIntensity;
         return {
-            x: (Math.random() - 0.5) * intensity * 2,
-            y: (Math.random() - 0.5) * intensity * 2
+            x: (Math.random() - 0.5) * power * 2.2,
+            y: (Math.random() - 0.5) * power * 2.2,
+            rot: (Math.random() - 0.5) * (power * 0.0015)
         };
     }
 }

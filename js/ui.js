@@ -5,6 +5,7 @@
 class UIManager {
     constructor() {
         this.coinEl = document.getElementById('coin-count');
+        this.coinPillEl = document.getElementById('coin-pill');
         this.diamondEl = document.getElementById('diamond-count');
         this.cannonNameEl = document.getElementById('cannon-name');
         this.cannonCostEl = document.getElementById('cannon-cost');
@@ -12,6 +13,10 @@ class UIManager {
         this.bossBannerEl = document.getElementById('boss-banner');
         this.bigWinOverlayEl = document.getElementById('big-win-overlay');
         this.bigWinCoinsEl = document.getElementById('big-win-coins');
+        this.comboContainerEl = document.getElementById('combo-container');
+        this.comboCountEl = document.getElementById('combo-count');
+        this.comboTitleEl = document.getElementById('combo-title');
+        this.comboTimer = null;
 
         // 模态弹窗
         this.almanacModal = document.getElementById('almanac-modal');
@@ -70,6 +75,42 @@ class UIManager {
                 this.coinEl.innerText = this.displayedCoins.toLocaleString();
             }
         }
+    }
+
+    // 金币飞入 UI 栏受击弹性缩放震颤反馈
+    triggerCoinBounce() {
+        if (!this.coinPillEl) return;
+        this.coinPillEl.classList.remove('bounce-hit');
+        void this.coinPillEl.offsetWidth; // 触发回流重绘
+        this.coinPillEl.classList.add('bounce-hit');
+    }
+
+    // 屏幕上方连击数 (Combo) 炫酷展示
+    showCombo(count) {
+        if (count < 2) return;
+        if (!this.comboContainerEl || !this.comboCountEl || !this.comboTitleEl) return;
+
+        this.comboCountEl.innerText = `COMBO x${count}`;
+
+        const titles = [
+            { min: 15, text: '🔥 灭世超神 UNSTOPPABLE! 🔥' },
+            { min: 10, text: '💥 疯狂大满贯 MEGA WIN! 💥' },
+            { min: 6, text: '✨ 连战连捷 GREAT! ✨' },
+            { min: 2, text: '⚡ 精彩连击 NICE! ⚡' }
+        ];
+        const matched = titles.find(t => count >= t.min);
+        this.comboTitleEl.innerText = matched ? matched.text : '连击捕获!';
+
+        this.comboContainerEl.classList.remove('show');
+        void this.comboContainerEl.offsetWidth;
+        this.comboContainerEl.classList.add('show');
+
+        clearTimeout(this.comboTimer);
+        this.comboTimer = setTimeout(() => {
+            if (this.comboContainerEl) {
+                this.comboContainerEl.classList.remove('show');
+            }
+        }, 2200);
     }
 
     showBossBanner(name = '远古金龙') {
