@@ -100,44 +100,47 @@ canvas#gameCanvas {
     filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
 }
 
-/* ================= 顶级神器·黑金无敌徽章 ================= */
+/* ================= 纯正黑金·高清晰无敌标签 (无脏边/无模糊) ================= */
 .god-badge {
-    background: linear-gradient(135deg, rgba(8, 8, 12, 0.94) 0%, rgba(28, 22, 6, 0.92) 100%) !important;
+    background: #000000 !important;
     border: 1.5px solid #ffd700 !important;
-    box-shadow: 0 0 14px rgba(255, 215, 0, 0.45), inset 0 0 8px rgba(255, 215, 0, 0.25) !important;
     border-radius: 20px !important;
-    padding: 3px 14px !important;
-    animation: godPulseBlackGold 2.2s infinite ease-in-out;
+    padding: 3px 12px !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+    animation: godPulseClean 2s infinite ease-in-out;
 }
 
-@keyframes godPulseBlackGold {
+@keyframes godPulseClean {
     0%, 100% {
         transform: scale(1);
-        border-color: #ffd700;
-        box-shadow: 0 0 12px rgba(255, 215, 0, 0.45), inset 0 0 6px rgba(255, 215, 0, 0.2);
     }
     50% {
-        transform: scale(1.05);
-        border-color: #fff176;
-        box-shadow: 0 0 22px rgba(255, 215, 0, 0.8), inset 0 0 12px rgba(255, 235, 59, 0.45);
+        transform: scale(1.04);
     }
 }
 
 .god-badge .pill-icon {
     font-size: 16px;
-    filter: drop-shadow(0 0 6px #ff9100);
+    filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    line-height: 1;
 }
 
 .god-text {
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 900;
-    letter-spacing: 1.2px;
-    color: #ffd700;
-    background: linear-gradient(180deg, #ffffff 0%, #ffe066 35%, #ffd700 70%, #ff9800 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 0.4px #000000;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 215, 0, 0.7);
+    letter-spacing: 1px;
+    color: #ffd700 !important;
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: #ffd700 !important;
+    -webkit-text-stroke: 0 !important;
+    text-shadow: none !important;
+    filter: none !important;
 }
 
 .pill-text {
