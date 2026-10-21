@@ -404,6 +404,17 @@ canvas#gameCanvas {
     animation: skillPulse 1.2s infinite alternate;
 }
 
+.skill-btn.boss-skill-btn {
+    border-color: rgba(255, 23, 68, 0.75);
+    background: linear-gradient(135deg, rgba(38, 5, 12, 0.9), rgba(12, 2, 5, 0.95));
+    box-shadow: 0 4px 15px rgba(255, 23, 68, 0.45);
+}
+
+.skill-btn.boss-skill-btn:hover {
+    border-color: #ff1744;
+    box-shadow: 0 0 22px rgba(255, 23, 68, 0.8), 0 0 10px #ffd700;
+}
+
 @keyframes skillPulse {
     0% { transform: scale(1); filter: drop-shadow(0 0 4px #ff3d00); }
     100% { transform: scale(1.08); filter: drop-shadow(0 0 14px #ff3d00); }

@@ -141,31 +141,42 @@ class UIManager {
         }, 2200);
     }
 
-    showBossBanner(name = '远古金龙') {
+    showBossBanner(name = '远古金龙 (BOSS)', icon = '🐉') {
         if (!this.bossBannerEl) return;
+        const titleEl = this.bossBannerEl.querySelector('.boss-title');
+        const subEl = this.bossBannerEl.querySelector('.boss-subtitle');
+        if (titleEl) titleEl.innerText = `⚠️ ${icon} BOSS 降临 ⚠️`;
+        if (subEl) subEl.innerText = `${name} 席卷深海！击败赢取超级巨奖！`;
+
         this.bossBannerEl.classList.add('show');
         if (window.soundManager) {
             window.soundManager.playBossAlert();
         }
         setTimeout(() => {
             this.bossBannerEl.classList.remove('show');
-        }, 4500);
-        this.showBossHp(120);
+        }, 3600);
     }
 
-    showBossHp(maxHp = 120) {
+    showBossHp(maxHp = 650, name = '远古金龙 (BOSS)', icon = '🐉') {
+        this.bossMaxHp = maxHp;
+        const nameEl = document.getElementById('boss-hp-name');
+        const iconEl = document.getElementById('boss-hp-icon');
+        if (nameEl) nameEl.innerText = name;
+        if (iconEl) iconEl.innerText = icon;
         if (!this.bossHpContainerEl) return;
         this.bossHpContainerEl.classList.add('show');
         this.updateBossHp(maxHp, maxHp);
     }
 
-    updateBossHp(hp, maxHp = 120) {
+    updateBossHp(hp, maxHp = null) {
+        if (maxHp) this.bossMaxHp = maxHp;
+        const total = this.bossMaxHp || 650;
         if (!this.bossHpFillEl || !this.bossHpTextEl) return;
-        const pct = Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100)));
+        const pct = Math.max(0, Math.min(100, Math.round((hp / total) * 100)));
         this.bossHpFillEl.style.width = `${pct}%`;
-        this.bossHpTextEl.innerText = `${pct}% (${Math.max(0, hp)}/${maxHp})`;
+        this.bossHpTextEl.innerText = `${pct}% (${Math.max(0, hp)}/${total})`;
         if (pct <= 0) {
-            setTimeout(() => this.hideBossHp(), 1000);
+            setTimeout(() => this.hideBossHp(), 1200);
         }
     }
 

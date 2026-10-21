@@ -35,10 +35,12 @@ class GameEngine {
         this.bullets = [];
         this.cannon = null;
 
-        // 鱼群波次刷新计时 (支持满屏 100+ 条鱼狂野鱼海)
+        // 鱼群波次刷新计时与四大史诗级 BOSS 轮换系统
         this.spawnTick = 0;
-        this.bossTimer = 1800; // 开局 30 秒首次刷新金龙 BOSS，后续每 60 秒刷新
-        this.bossInterval = 3600; // 约 60 秒刷新一次金龙 BOSS (60fps * 60)
+        this.bossTypes = ['golden_dragon', 'kraken', 'mecha_shark', 'phantom_dragon'];
+        this.bossIndex = 0;
+        this.bossInterval = 12000; // 约 3~4 分钟刷新一次 BOSS (12000帧 / 60fps = 200 秒)
+        this.bossTimer = 12000 - 300; // 开局 5 秒 (300帧) 立即降临首个 BOSS，后续每 3~4 分钟降临一次
 
         this.initCannon();
         this.initEvents();
@@ -326,6 +328,7 @@ class GameEngine {
         const skillFreeze = document.getElementById('skill-freeze');
         const skillLaser = document.getElementById('skill-laser');
         const skillNuke = document.getElementById('skill-nuke');
+        const skillBoss = document.getElementById('skill-boss');
 
         if (skillLock) skillLock.addEventListener('click', () => this.toggleLockSkill());
         if (skillAuto) skillAuto.addEventListener('click', () => this.toggleAutoSkill());
@@ -333,6 +336,7 @@ class GameEngine {
         if (skillFreeze) skillFreeze.addEventListener('click', () => this.toggleFreezeSkill());
         if (skillLaser) skillLaser.addEventListener('click', () => this.triggerLaserSkill());
         if (skillNuke) skillNuke.addEventListener('click', () => this.triggerNukeSkill());
+        if (skillBoss) skillBoss.addEventListener('click', () => this.spawnBoss());
 
         const btnAlmanac = document.getElementById('btn-almanac');
         const btnSound = document.getElementById('btn-sound');
@@ -538,10 +542,13 @@ class GameEngine {
         }
     }
 
-    spawnBoss() {
+    spawnBoss(type = null) {
         if (this.currentBoss && !this.currentBoss.isDead && !this.currentBoss.isDying) {
             return;
         }
+
+        const bossType = type || this.bossTypes[this.bossIndex % this.bossTypes.length];
+        this.bossIndex++;
 
         // 清理 30% 低分小鱼腾出游动空间
         let removeCount = Math.floor(this.fishes.length * 0.3);
@@ -557,16 +564,15 @@ class GameEngine {
             window.soundManager.playBossAlert();
         }
         if (window.particleSystem) {
-            window.particleSystem.triggerRedAlert(80);
-            window.particleSystem.shake(25, 45);
+            window.particleSystem.triggerRedAlert(85);
+            window.particleSystem.shake(28, 50);
         }
 
-        const dragon = this.spawnFish('golden_dragon');
-        dragon.hp = dragon.maxHp = 650;
-        this.currentBoss = dragon;
+        const boss = this.spawnFish(bossType);
+        this.currentBoss = boss;
         if (window.uiManager) {
-            window.uiManager.showBossBanner();
-            window.uiManager.showBossHp(dragon.maxHp);
+            window.uiManager.showBossBanner(boss.name, (boss.config && boss.config.icon) || '🐉');
+            window.uiManager.showBossHp(boss.maxHp, boss.name, (boss.config && boss.config.icon) || '🐉');
         }
 
         // 召唤 8 条剑鱼护航编队
@@ -640,7 +646,7 @@ class GameEngine {
 
         // 震屏与金币飞行
         if (window.particleSystem) {
-            const isBigFish = fish.score >= 40 || fish.type === 'golden_dragon';
+            const isBigFish = fish.score >= 40 || (fish.config && fish.config.isBoss);
             const shakePower = Math.min(32, 10 + Math.sqrt(fish.score) * 2.2);
             window.particleSystem.shake(shakePower, 18);
 
@@ -651,8 +657,8 @@ class GameEngine {
             window.particleSystem.addScore(fish.x, fish.y, `+${gainedCoins}`, fish.score >= 100);
         }
 
-        // 远古金龙 BOSS 专属击破奖励：全屏爆金币狂欢 + 漫天暴雨 + MEGA WIN
-        if (fish.type === 'golden_dragon') {
+        // 四大史诗级 BOSS 专属击破奖励：全屏爆金币狂欢 + 漫天暴雨 + MEGA WIN
+        if (fish.config && fish.config.isBoss) {
             this.currentBoss = null;
             const targetPos = { x: 260, y: 35 };
             if (window.uiManager) {
@@ -764,7 +770,7 @@ class GameEngine {
                 if (window.particleSystem) {
                     window.particleSystem.addHitSparks(fish.x, fish.y, 0xff0055);
                 }
-                if (fish.type === 'golden_dragon') {
+                if (fish.config && fish.config.isBoss) {
                     fish.takeHit(35);
                     if (window.soundManager) {
                         window.soundManager.playBossHit();
@@ -873,7 +879,7 @@ class GameEngine {
                             if (window.particleSystem) {
                                 window.particleSystem.addHitSparks(target.x, target.y, b.colorNum);
                             }
-                            if (target.type === 'golden_dragon') {
+                            if (target.config && target.config.isBoss) {
                                 const bossDmg = b.levelConfig.level >= 10 ? 25 : (b.levelConfig.level >= 6 ? 16 : 10);
                                 target.takeHit(bossDmg);
                                 if (window.soundManager) {
@@ -941,7 +947,7 @@ class GameEngine {
         this.hudGfx.clear();
         if (!fish || fish.isDead) return;
 
-        const isBoss = fish.score >= 100 || fish.type === 'golden_dragon';
+        const isBoss = (fish.config && fish.config.isBoss) || fish.score >= 100;
         const color = isBoss ? 0xff1744 : 0x00e5ff;
         const r = Math.max(28, fish.width * 0.55);
 
