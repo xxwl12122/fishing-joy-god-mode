@@ -327,6 +327,21 @@ class GameEngine {
         }
     }
 
+    triggerFreezeSkill(duration = 480) {
+        this.isFrozen = true;
+        this.freezeTimer = duration;
+        const el = document.getElementById('skill-freeze');
+        if (el) el.classList.add('active');
+        if (window.soundManager) window.soundManager.playFreeze();
+    }
+
+    triggerRageSkill(duration = 600) {
+        this.cannon.isRageMode = true;
+        this.cannon.rageTimer = duration;
+        const el = document.getElementById('skill-rage');
+        if (el) el.classList.add('active');
+    }
+
     triggerLaserSkill() {
         this.cannon.isFiringLaser = true;
         this.cannon.laserTimer = this.cannon.laserDuration;
@@ -606,6 +621,16 @@ class GameEngine {
             this.checkLaserCollisions();
         }
 
+        // 冰冻计时
+        if (this.isFrozen && this.freezeTimer > 0 && this.freezeTimer < 90000000) {
+            this.freezeTimer--;
+            if (this.freezeTimer <= 0) {
+                this.isFrozen = false;
+                const el = document.getElementById('skill-freeze');
+                if (el) el.classList.remove('active');
+            }
+        }
+
         if (window.particleSystem) {
             window.particleSystem.update(this.isFrozen);
         }
@@ -760,8 +785,12 @@ class GameEngine {
             return;
         }
 
-        this.update();
-        this.render();
+        try {
+            this.update();
+            this.render();
+        } catch (err) {
+            console.error('Safe recovery from gameLoop error:', err);
+        }
         requestAnimationFrame((t) => this.gameLoop(t));
     }
 }

@@ -484,7 +484,7 @@ class ParticleSystem {
                 spr.x = c.x;
                 spr.y = c.y;
 
-                const textures = c.isBig ? window.pixiTextures.coins.gold : window.pixiTextures.coins.silver;
+                const textures = (window.pixiTextures && window.pixiTextures.coins) ? (c.isBig ? window.pixiTextures.coins.gold : window.pixiTextures.coins.silver) : null;
                 if (textures && textures.length > 0) {
                     const frameIdx = Math.abs(Math.floor(c.rotation * 3.5)) % textures.length;
                     spr.texture = textures[frameIdx];

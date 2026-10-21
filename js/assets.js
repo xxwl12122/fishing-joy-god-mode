@@ -64,6 +64,7 @@
                     this.loadedCount++;
                     if (this.loadedCount >= this.totalCount) {
                         this.isAllLoaded = true;
+                        this.initPixiTextures();
                         this.triggerCallbacks();
                     }
                 };
@@ -72,6 +73,7 @@
                     this.loadedCount++;
                     if (this.loadedCount >= this.totalCount) {
                         this.isAllLoaded = true;
+                        this.initPixiTextures();
                         this.triggerCallbacks();
                     }
                 };
