@@ -120,7 +120,7 @@ const FISH_CONFIGS = {
         baseHp: 15,
         width: 74,
         height: 68,
-        desc: '散发极寒冰晶，捕获后冻结全屏鱼群 8 秒！'
+        desc: '散发极寒冰晶的稀有海星，捕获后绽放极寒冰环并奖励 2000 巨额金币！'
     },
     lightning_eel: {
         name: '电光鳗',

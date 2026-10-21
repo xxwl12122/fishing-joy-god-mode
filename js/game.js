@@ -533,7 +533,17 @@ class GameEngine {
         if (fish.type === 'bomb_fish') {
             this.triggerBombChain(fish.x, fish.y);
         } else if (fish.type === 'freeze_fish') {
-            this.triggerFreezeSkill();
+            // 彻底关闭被动冰封：捕获海星触发冰晶冲击波并奖励 2000 极寒宝藏金币，绝不打断游动节奏
+            // 全屏冰封完全交由玩家按快捷键 4 或点击技能图标手动开启/解冻
+            const bonusFreezeCoins = 2000;
+            this.coins += bonusFreezeCoins;
+            if (window.uiManager) window.uiManager.updateCoins(this.coins);
+            if (window.particleSystem) {
+                window.particleSystem.addExplosion(fish.x, fish.y, 220, '#00e5ff');
+                window.particleSystem.addScore(fish.x, fish.y - 30, `+${bonusFreezeCoins} 极寒宝藏!`, true);
+                window.particleSystem.shake(16, 20);
+            }
+            if (window.soundManager) window.soundManager.playFreeze();
         } else if (fish.type === 'lightning_eel') {
             this.triggerLightningChain(fish);
         }
