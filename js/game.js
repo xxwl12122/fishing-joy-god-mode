@@ -71,11 +71,12 @@ class GameEngine {
     }
 
     initInitialFishes() {
-        // 开局先生成几波鱼让画面生机盎然
-        for (let i = 0; i < 6; i++) {
+        // 开局狂野鱼海：直接生成 2 大编队鱼群与巡游大鱼
+        this.spawnSchool('yellow_fish', 12);
+        this.spawnSchool('clown_fish', 10);
+        for (let i = 0; i < 15; i++) {
             this.spawnRandomFish();
         }
-        this.spawnSchool('yellow_fish', 5);
     }
 
     // 事件监听绑定
@@ -394,31 +395,32 @@ class GameEngine {
         }
     }
 
-    // 生成随机单只鱼
+    // 生成随机单只鱼 (使用对象池复用，特殊鱼爆率提升到 15%)
     spawnRandomFish() {
         const roll = Math.random() * 100;
         let type = 'yellow_fish';
 
         if (roll < 35) type = 'yellow_fish';
-        else if (roll < 55) type = 'clown_fish';
-        else if (roll < 70) type = 'blue_tang';
-        else if (roll < 80) type = 'puffer_fish';
-        else if (roll < 87) type = 'jellyfish';
-        else if (roll < 93) type = 'turtle';
-        else if (roll < 97) type = 'swordfish';
+        else if (roll < 52) type = 'clown_fish';
+        else if (roll < 66) type = 'blue_tang';
+        else if (roll < 76) type = 'puffer_fish';
+        else if (roll < 84) type = 'jellyfish';
+        else if (roll < 90) type = 'turtle';
+        else if (roll < 95) type = 'swordfish';
         else type = 'manta_ray';
 
-        // 稀有特殊功能鱼随机生成 (2% 概率)
-        if (Math.random() < 0.05) {
+        // 稀有特殊功能鱼生成概率提升到 15% (炸弹鱼、寒冰海星、电光鳗，连环爆炸清屏极度爽快！)
+        if (Math.random() < 0.15) {
             const specials = ['bomb_fish', 'freeze_fish', 'lightning_eel'];
             type = specials[Math.floor(Math.random() * specials.length)];
         }
 
-        this.fishes.push(new window.Fish(type, this.width, this.height));
+        const fish = window.fishPool ? window.fishPool.get(type, this.width, this.height) : new window.Fish(type, this.width, this.height);
+        this.fishes.push(fish);
     }
 
-    // 生成鱼群编队游动
-    spawnSchool(type = 'yellow_fish', count = 5) {
+    // 生成鱼群编队游动 (数量倍增为 10~15 条，使用对象池)
+    spawnSchool(type = 'yellow_fish', count = 12) {
         const fromLeft = Math.random() < 0.5;
         const baseY = 100 + Math.random() * (this.height - 250);
         const baseCurve = {
@@ -429,15 +431,15 @@ class GameEngine {
         };
 
         for (let i = 0; i < count; i++) {
-            const offsetX = (Math.random() - 0.5) * 40 - i * 35;
-            const offsetY = (Math.random() - 0.5) * 30;
+            const offsetX = (Math.random() - 0.5) * 45 - i * 35;
+            const offsetY = (Math.random() - 0.5) * 35;
             const curve = {
                 p0: { x: baseCurve.p0.x + offsetX, y: baseCurve.p0.y + offsetY },
                 p1: { x: baseCurve.p1.x + offsetX, y: baseCurve.p1.y + offsetY },
                 p2: { x: baseCurve.p2.x + offsetX, y: baseCurve.p2.y + offsetY },
                 p3: { x: baseCurve.p3.x + offsetX, y: baseCurve.p3.y + offsetY }
             };
-            const fish = new window.Fish(type, this.width, this.height, curve);
+            const fish = window.fishPool ? window.fishPool.get(type, this.width, this.height, curve) : new window.Fish(type, this.width, this.height, curve);
             this.fishes.push(fish);
         }
     }
@@ -445,12 +447,35 @@ class GameEngine {
     spawnBoss() {
         window.uiManager.showBossBanner('远古金龙');
         if (window.particleSystem) {
-            window.particleSystem.shake(15, 35);
+            window.particleSystem.shake(22, 38);
         }
-        const boss = new window.Fish('golden_dragon', this.width, this.height);
+
+        // BOSS 出场排场：清空当前 30% 低分小鱼，为巨龙腾出视觉舞台
+        const lowFishes = this.fishes.filter(f => !f.isDead && !f.isDying && f.score <= 4);
+        const clearCount = Math.floor(lowFishes.length * 0.3);
+        for (let i = 0; i < clearCount; i++) {
+            lowFishes[i].startDying();
+            if (window.particleSystem) {
+                window.particleSystem.addBubble(lowFishes[i].x, lowFishes[i].y, 6);
+            }
+        }
+
+        const boss = window.fishPool ? window.fishPool.get('golden_dragon', this.width, this.height) : new window.Fish('golden_dragon', this.width, this.height);
         this.fishes.push(boss);
         if (this.isLockMode) {
             this.lockedFish = boss;
+        }
+
+        // 巨龙亲卫队：同时召唤 10 条尖嘴剑鱼护航编队伴随游动！
+        for (let i = 0; i < 10; i++) {
+            const escortCurve = {
+                p0: { x: boss.curve.p0.x + (Math.random() - 0.5) * 160, y: boss.curve.p0.y + (i - 5) * 28 },
+                p1: { x: boss.curve.p1.x + (Math.random() - 0.5) * 160, y: boss.curve.p1.y + (i - 5) * 28 },
+                p2: { x: boss.curve.p2.x + (Math.random() - 0.5) * 160, y: boss.curve.p2.y + (i - 5) * 28 },
+                p3: { x: boss.curve.p3.x + (Math.random() - 0.5) * 160, y: boss.curve.p3.y + (i - 5) * 28 }
+            };
+            const escort = window.fishPool ? window.fishPool.get('swordfish', this.width, this.height, escortCurve) : new window.Fish('swordfish', this.width, this.height, escortCurve);
+            this.fishes.push(escort);
         }
     }
 
@@ -646,6 +671,10 @@ class GameEngine {
                 if (this.lockedFish === fish) {
                     this.lockedFish = this.isLockMode ? this.findHighestValueFish() : null;
                 }
+                // 对象池回收复用
+                if (window.fishPool) {
+                    window.fishPool.release(fish);
+                }
                 this.fishes.splice(i, 1);
             }
         }
@@ -656,6 +685,10 @@ class GameEngine {
             b.update(this.width, this.height);
 
             if (b.isDead) {
+                // 子弹对象池回收复用
+                if (window.bulletPool) {
+                    window.bulletPool.release(b);
+                }
                 this.bullets.splice(i, 1);
                 continue;
             }
@@ -701,13 +734,14 @@ class GameEngine {
             }
         }
 
-        // 鱼群波次刷新调度
+        // 鱼群波次刷新调度 (狂野鱼海爆发生成：同屏上限提升到 85 条，刷新频率大幅提速)
         this.spawnTick++;
-        if (this.spawnTick % 90 === 0 && this.fishes.length < 24) {
+        if (this.spawnTick % 22 === 0 && this.fishes.length < 85) {
             this.spawnRandomFish();
         }
-        if (this.spawnTick % 420 === 0 && this.fishes.length < 24) {
-            this.spawnSchool(['yellow_fish', 'clown_fish', 'blue_tang'][Math.floor(Math.random() * 3)], 6);
+        if (this.spawnTick % 160 === 0 && this.fishes.length < 75) {
+            const schoolCount = 10 + Math.floor(Math.random() * 6); // 10 ~ 15 条
+            this.spawnSchool(['yellow_fish', 'clown_fish', 'blue_tang'][Math.floor(Math.random() * 3)], schoolCount);
         }
 
         // BOSS 刷新
@@ -734,9 +768,9 @@ class GameEngine {
         this.ctx.rotate(shake.rot || 0);
         this.ctx.translate(-this.width / 2, -this.height / 2);
 
-        // 1. 动态海水底层背景与光芒
+        // 1. 动态海水底层背景与光芒 (传入鱼群数量，超过50条激活更耀眼的狂野洋流)
         if (window.particleSystem) {
-            window.particleSystem.renderBackground(this.ctx, this.width, this.height);
+            window.particleSystem.renderBackground(this.ctx, this.width, this.height, this.fishes.length);
         }
 
         // 2. 绘制所有生动的鱼类

@@ -37,6 +37,28 @@ class Bullet {
         this.sparkParticles = [];
     }
 
+    // 对象池复用重置接口
+    reset(x, y, angle, levelConfig, targetFish = null) {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.levelConfig = levelConfig;
+        this.targetFish = targetFish;
+
+        this.speed = levelConfig.speed;
+        this.vx = Math.cos(angle) * this.speed;
+        this.vy = Math.sin(angle) * this.speed;
+
+        this.radius = 6 + Math.min(levelConfig.level * 0.7, 7);
+        this.color = levelConfig.color;
+        this.bounces = 0;
+        this.maxBounces = 5;
+        this.isDead = false;
+        this.trail.length = 0;
+        this.isHighTier = levelConfig.level >= 6;
+        this.sparkParticles.length = 0;
+    }
+
     update(screenWidth, screenHeight) {
         if (this.isDead) return;
 
@@ -279,10 +301,17 @@ class Cannon {
             window.soundManager.playShoot(cfg.level);
         }
 
-        // 根据炮管数量发射子弹 (单发、双发微散布、三联发)
+        // 根据炮管数量发射子弹 (使用对象池 bulletPool 复用子弹，避免垃圾回收卡顿)
+        const getB = (bx, by, bAngle) => {
+            if (window.bulletPool) {
+                return window.bulletPool.get(bx, by, bAngle, cfg, targetFish);
+            }
+            return new Bullet(bx, by, bAngle, cfg, targetFish);
+        };
+
         const bullets = [];
         if (cfg.barrels === 1) {
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle, cfg, targetFish));
+            bullets.push(getB(muzzleX, muzzleY, this.angle));
         } else if (cfg.barrels === 2) {
             // 双管左右微偏移
             const offset = 7;
@@ -291,18 +320,18 @@ class Cannon {
             const b1Y = muzzleY + Math.sin(perpAngle) * offset;
             const b2X = muzzleX - Math.cos(perpAngle) * offset;
             const b2Y = muzzleY - Math.sin(perpAngle) * offset;
-            bullets.push(new Bullet(b1X, b1Y, this.angle - 0.03, cfg, targetFish));
-            bullets.push(new Bullet(b2X, b2Y, this.angle + 0.03, cfg, targetFish));
+            bullets.push(getB(b1X, b1Y, this.angle - 0.03));
+            bullets.push(getB(b2X, b2Y, this.angle + 0.03));
         } else if (cfg.barrels === 3) {
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle - 0.08, cfg, targetFish));
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle, cfg, targetFish));
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle + 0.08, cfg, targetFish));
+            bullets.push(getB(muzzleX, muzzleY, this.angle - 0.08));
+            bullets.push(getB(muzzleX, muzzleY, this.angle));
+            bullets.push(getB(muzzleX, muzzleY, this.angle + 0.08));
         } else {
             // 四联重炮
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle - 0.12, cfg, targetFish));
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle - 0.04, cfg, targetFish));
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle + 0.04, cfg, targetFish));
-            bullets.push(new Bullet(muzzleX, muzzleY, this.angle + 0.12, cfg, targetFish));
+            bullets.push(getB(muzzleX, muzzleY, this.angle - 0.12));
+            bullets.push(getB(muzzleX, muzzleY, this.angle - 0.04));
+            bullets.push(getB(muzzleX, muzzleY, this.angle + 0.04));
+            bullets.push(getB(muzzleX, muzzleY, this.angle + 0.12));
         }
 
         return bullets;
@@ -488,6 +517,29 @@ class Cannon {
     }
 }
 
+// ================= 子弹对象池 (Bullet Pooling) =================
+class BulletPool {
+    constructor() {
+        this.pool = [];
+    }
+
+    get(x, y, angle, levelConfig, targetFish = null) {
+        if (this.pool.length > 0) {
+            const b = this.pool.pop();
+            b.reset(x, y, angle, levelConfig, targetFish);
+            return b;
+        }
+        return new Bullet(x, y, angle, levelConfig, targetFish);
+    }
+
+    release(bullet) {
+        if (this.pool.length < 300) {
+            this.pool.push(bullet);
+        }
+    }
+}
+
+window.bulletPool = new BulletPool();
 window.CANNON_LEVELS = CANNON_LEVELS;
 window.Cannon = Cannon;
 window.Bullet = Bullet;

@@ -132,8 +132,104 @@ const FISH_CONFIGS = {
     }
 };
 
+// ================= 离屏 Canvas 预渲染小鱼精灵贴图缓存 (极大降低 CPU/GPU 负担) =================
+const SPRITE_CACHE = {};
+function initFishSprites() {
+    if (typeof document === 'undefined') return;
+
+    // 1. 小黄鱼身体离屏缓存
+    const yC = document.createElement('canvas');
+    yC.width = 36; yC.height = 20;
+    const yCtx = yC.getContext('2d');
+    const yGrad = yCtx.createRadialGradient(22, 8, 2, 18, 10, 16);
+    yGrad.addColorStop(0, '#fff45c');
+    yGrad.addColorStop(0.7, '#ffb300');
+    yGrad.addColorStop(1, '#e67e00');
+    yCtx.fillStyle = yGrad;
+    yCtx.beginPath();
+    yCtx.ellipse(18, 10, 16, 9, 0, 0, Math.PI * 2);
+    yCtx.fill();
+    yCtx.fillStyle = '#ffffff';
+    yCtx.beginPath();
+    yCtx.arc(26, 7, 3.2, 0, Math.PI * 2);
+    yCtx.fill();
+    yCtx.fillStyle = '#000000';
+    yCtx.beginPath();
+    yCtx.arc(27, 7, 1.6, 0, Math.PI * 2);
+    yCtx.fill();
+    SPRITE_CACHE.yellow_fish = yC;
+
+    // 2. 小丑鱼身体离屏缓存
+    const cC = document.createElement('canvas');
+    cC.width = 44; cC.height = 26;
+    const cCtx = cC.getContext('2d');
+    const cGrad = cCtx.createLinearGradient(2, 13, 42, 13);
+    cGrad.addColorStop(0, '#e64a19');
+    cGrad.addColorStop(0.5, '#ff7043');
+    cGrad.addColorStop(1, '#ff5722');
+    cCtx.fillStyle = cGrad;
+    cCtx.beginPath();
+    cCtx.ellipse(22, 13, 20, 12, 0, 0, Math.PI * 2);
+    cCtx.fill();
+    cCtx.fillStyle = '#ffffff';
+    cCtx.strokeStyle = '#222';
+    cCtx.lineWidth = 1.2;
+    cCtx.beginPath();
+    cCtx.ellipse(17, 13, 3.5, 11, 0, 0, Math.PI * 2);
+    cCtx.fill();
+    cCtx.stroke();
+    cCtx.beginPath();
+    cCtx.ellipse(28, 13, 3, 10, 0, 0, Math.PI * 2);
+    cCtx.fill();
+    cCtx.stroke();
+    cCtx.fillStyle = '#ffffff';
+    cCtx.beginPath();
+    cCtx.arc(33, 9, 3.8, 0, Math.PI * 2);
+    cCtx.fill();
+    cCtx.fillStyle = '#000000';
+    cCtx.beginPath();
+    cCtx.arc(34.5, 9, 2, 0, Math.PI * 2);
+    cCtx.fill();
+    SPRITE_CACHE.clown_fish = cC;
+
+    // 3. 蓝唐王鱼身体离屏缓存
+    const bC = document.createElement('canvas');
+    bC.width = 52; bC.height = 32;
+    const bCtx = bC.getContext('2d');
+    const bGrad = bCtx.createRadialGradient(31, 12, 4, 26, 16, 24);
+    bGrad.addColorStop(0, '#2979ff');
+    bGrad.addColorStop(0.6, '#1565c0');
+    bGrad.addColorStop(1, '#0d47a1');
+    bCtx.fillStyle = bGrad;
+    bCtx.beginPath();
+    bCtx.ellipse(26, 16, 24, 15, 0, 0, Math.PI * 2);
+    bCtx.fill();
+    bCtx.fillStyle = '#111827';
+    bCtx.beginPath();
+    bCtx.arc(22, 14, 12, 0, Math.PI);
+    bCtx.fill();
+    bCtx.fillStyle = '#ffffff';
+    bCtx.beginPath();
+    bCtx.arc(39, 11, 4, 0, Math.PI * 2);
+    bCtx.fill();
+    bCtx.fillStyle = '#000000';
+    bCtx.beginPath();
+    bCtx.arc(40.5, 11, 2, 0, Math.PI * 2);
+    bCtx.fill();
+    SPRITE_CACHE.blue_tang = bC;
+}
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', initFishSprites);
+}
+
 class Fish {
     constructor(type, spawnWidth, spawnHeight, customCurve = null) {
+        this.reset(type, spawnWidth, spawnHeight, customCurve);
+    }
+
+    // 对象池复用重置接口 (避免高频 GC 垃圾回收导致卡顿)
+    reset(type, spawnWidth, spawnHeight, customCurve = null) {
         this.type = type;
         this.config = FISH_CONFIGS[type] || FISH_CONFIGS.yellow_fish;
         this.name = this.config.name;
@@ -148,25 +244,26 @@ class Fish {
         this.angle = 0;
         this.phase = Math.random() * Math.PI * 2;
         this.swimSpeed = 0.08 + Math.random() * 0.04;
-        this.t = 0; // 贝塞尔曲线进度 (0 ~ 1)
+        this.t = 0;
         this.tSpeed = 0.0006 * this.config.speed;
 
         this.isDead = false;
         this.isDying = false;
         this.deathProgress = 0;
-        this.hitFlash = 0; // 受击白光闪烁
-        this.pufferScale = 1; // 刺豚受击膨胀
+        this.hitFlash = 0;
+        this.pufferScale = 1;
 
-        // 金龙多节骨骼链条
         if (this.type === 'golden_dragon') {
-            this.segments = [];
-            this.segmentCount = 14;
-            for (let i = 0; i < this.segmentCount; i++) {
-                this.segments.push({ x: 0, y: 0, angle: 0 });
+            if (!this.segments) {
+                this.segments = [];
+                for (let i = 0; i < 14; i++) {
+                    this.segments.push({ x: 0, y: 0, angle: 0 });
+                }
             }
+        } else {
+            this.segments = null;
         }
 
-        // 初始化游动曲线轨迹
         if (customCurve) {
             this.curve = customCurve;
         } else {
@@ -381,8 +478,7 @@ class Fish {
 
     // 1. 小黄鱼
     drawYellowFish(ctx, wiggle) {
-        // 尾鳍
-        ctx.save();
+        // 动态尾鳍
         ctx.fillStyle = '#ffaa00';
         ctx.beginPath();
         ctx.moveTo(-12, 0);
@@ -391,32 +487,34 @@ class Fish {
         ctx.lineTo(-24, 10 + wiggle);
         ctx.closePath();
         ctx.fill();
-        ctx.restore();
 
-        // 身体
-        const grad = ctx.createRadialGradient(4, -2, 2, 0, 0, 16);
-        grad.addColorStop(0, '#fff45c');
-        grad.addColorStop(0.7, '#ffb300');
-        grad.addColorStop(1, '#e67e00');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // 身体 (离屏贴图预渲染直接贴图，极大节省百万级运算)
+        if (SPRITE_CACHE.yellow_fish) {
+            ctx.drawImage(SPRITE_CACHE.yellow_fish, -18, -10);
+        } else {
+            const grad = ctx.createRadialGradient(4, -2, 2, 0, 0, 16);
+            grad.addColorStop(0, '#fff45c');
+            grad.addColorStop(0.7, '#ffb300');
+            grad.addColorStop(1, '#e67e00');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 16, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        // 眼睛
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(8, -3, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(9, -3, 1.6, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(8, -3, 3.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(9, -3, 1.6, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     // 2. 小丑鱼 (橙白条纹)
     drawClownFish(ctx, wiggle) {
-        // 尾鳍
+        // 动态尾鳍
         ctx.fillStyle = '#ff5500';
         ctx.beginPath();
         ctx.moveTo(-16, 0);
@@ -425,44 +523,42 @@ class Fish {
         ctx.lineTo(-28, 12 + wiggle);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#331100';
-        ctx.lineWidth = 1;
-        ctx.stroke();
 
-        // 橙色身体
-        const bodyGrad = ctx.createLinearGradient(-20, 0, 20, 0);
-        bodyGrad.addColorStop(0, '#e64a19');
-        bodyGrad.addColorStop(0.5, '#ff7043');
-        bodyGrad.addColorStop(1, '#ff5722');
-        ctx.fillStyle = bodyGrad;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 20, 12, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // 身体
+        if (SPRITE_CACHE.clown_fish) {
+            ctx.drawImage(SPRITE_CACHE.clown_fish, -22, -13);
+        } else {
+            const bodyGrad = ctx.createLinearGradient(-20, 0, 20, 0);
+            bodyGrad.addColorStop(0, '#e64a19');
+            bodyGrad.addColorStop(0.5, '#ff7043');
+            bodyGrad.addColorStop(1, '#ff5722');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 20, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        // 白色警戒斑纹 (两条白杠，黑色描边)
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#222';
-        ctx.lineWidth = 1.2;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.ellipse(-5, 0, 3.5, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
 
-        ctx.beginPath();
-        ctx.ellipse(-5, 0, 3.5, 11, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(6, 0, 3, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
 
-        ctx.beginPath();
-        ctx.ellipse(6, 0, 3, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // 眼睛
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(11, -4, 3.8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(12.5, -4, 2, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(11, -4, 3.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(12.5, -4, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     // 3. 蓝唐王鱼
@@ -478,30 +574,32 @@ class Fish {
         ctx.fill();
 
         // 宝蓝身体
-        const grad = ctx.createRadialGradient(5, -4, 4, 0, 0, 24);
-        grad.addColorStop(0, '#2979ff');
-        grad.addColorStop(0.6, '#1565c0');
-        grad.addColorStop(1, '#0d47a1');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 24, 15, 0, 0, Math.PI * 2);
-        ctx.fill();
+        if (SPRITE_CACHE.blue_tang) {
+            ctx.drawImage(SPRITE_CACHE.blue_tang, -26, -16);
+        } else {
+            const grad = ctx.createRadialGradient(5, -4, 4, 0, 0, 24);
+            grad.addColorStop(0, '#2979ff');
+            grad.addColorStop(0.6, '#1565c0');
+            grad.addColorStop(1, '#0d47a1');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 24, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        // 黑色回旋花纹
-        ctx.fillStyle = '#111827';
-        ctx.beginPath();
-        ctx.arc(-4, -2, 12, 0, Math.PI);
-        ctx.fill();
+            ctx.fillStyle = '#111827';
+            ctx.beginPath();
+            ctx.arc(-4, -2, 12, 0, Math.PI);
+            ctx.fill();
 
-        // 眼睛
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(13, -5, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(14.5, -5, 2, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(13, -5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(14.5, -5, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     // 4. 刺豚 (河豚 - 受击剧烈膨胀带尖刺)
@@ -1058,5 +1156,28 @@ class Fish {
     }
 }
 
+// ================= 对象池 (Object Pooling) 内存与性能管理 =================
+class FishPool {
+    constructor() {
+        this.pool = [];
+    }
+
+    get(type, spawnWidth, spawnHeight, customCurve = null) {
+        if (this.pool.length > 0) {
+            const fish = this.pool.pop();
+            fish.reset(type, spawnWidth, spawnHeight, customCurve);
+            return fish;
+        }
+        return new Fish(type, spawnWidth, spawnHeight, customCurve);
+    }
+
+    release(fish) {
+        if (this.pool.length < 250) {
+            this.pool.push(fish);
+        }
+    }
+}
+
+window.fishPool = new FishPool();
 window.FISH_CONFIGS = FISH_CONFIGS;
 window.Fish = Fish;

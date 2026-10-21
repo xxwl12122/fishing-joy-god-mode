@@ -44,8 +44,9 @@ class ParticleSystem {
         this.maxShakeTimer = Math.max(this.maxShakeTimer, this.shakeTimer);
     }
 
-    // 添加气泡
+    // 添加气泡 (限制最大同屏数量，保护性能)
     addBubble(x, y, size = null) {
+        if (this.bubbles.length >= 35) return;
         this.bubbles.push({
             x: x !== undefined ? x : Math.random() * window.innerWidth,
             y: y !== undefined ? y : window.innerHeight + 20,
@@ -58,9 +59,10 @@ class ParticleSystem {
         });
     }
 
-    // 强化金币飞行动画 (增加光效拖尾与到达 UI 栏受击震颤)
+    // 强化金币飞行动画 (限制并发最大粒子，防止连锁爆炸卡顿)
     addCoin(startX, startY, targetX, targetY, value = 10, count = 5) {
-        const coinCount = Math.min(Math.max(4, Math.floor(value / 6)), 20);
+        if (this.coins.length >= 100) return;
+        const coinCount = Math.min(Math.max(4, Math.floor(value / 6)), 16);
         for (let i = 0; i < coinCount; i++) {
             const spreadAngle = Math.random() * Math.PI * 2;
             const spreadDist = 25 + Math.random() * 75;
@@ -138,25 +140,28 @@ class ParticleSystem {
         });
     }
 
-    // 爆炸特效
+    // 爆炸特效 (限制并发上限与碎片粒子，防止连锁爆炸崩溃显卡)
     addExplosion(x, y, radius = 240) {
+        if (this.explosions.length >= 8) {
+            this.explosions.shift();
+        }
         this.explosions.push({
             x: x,
             y: y,
             radius: 0,
             maxRadius: radius,
             opacity: 1,
-            particles: Array.from({ length: 50 }, () => ({
+            particles: Array.from({ length: 22 }, () => ({
                 x: x,
                 y: y,
                 vx: (Math.random() - 0.5) * 16,
                 vy: (Math.random() - 0.5) * 16,
-                size: 3 + Math.random() * 8,
+                size: 3 + Math.random() * 7,
                 color: ['#ff4400', '#ffcc00', '#ffffff', '#ff0055', '#ff9100'][Math.floor(Math.random() * 5)],
-                life: 38
+                life: 32
             }))
         });
-        this.shake(32, 40);
+        this.shake(32, 38);
     }
 
     // 闪电链特效
@@ -307,13 +312,24 @@ class ParticleSystem {
         this.causticOffset += 0.02;
     }
 
-    renderBackground(ctx, width, height) {
+    renderBackground(ctx, width, height, fishCount = 0) {
+        // 当同屏鱼群超过 50 条时，激活深海狂野乱流光影 (更加明亮活跃的洋流涌动)
+        const isFrenzy = fishCount > 50;
+        const frenzyMultiplier = isFrenzy ? Math.min(1.8, 1 + (fishCount - 50) * 0.02) : 1;
+
         // 1. 深海渐变底色
         const oceanGrad = ctx.createLinearGradient(0, 0, 0, height);
-        oceanGrad.addColorStop(0, '#02182b');
-        oceanGrad.addColorStop(0.3, '#032b4d');
-        oceanGrad.addColorStop(0.7, '#013861');
-        oceanGrad.addColorStop(1, '#001a33');
+        if (isFrenzy) {
+            oceanGrad.addColorStop(0, '#022442');
+            oceanGrad.addColorStop(0.3, '#043b6b');
+            oceanGrad.addColorStop(0.7, '#024b85');
+            oceanGrad.addColorStop(1, '#012547');
+        } else {
+            oceanGrad.addColorStop(0, '#02182b');
+            oceanGrad.addColorStop(0.3, '#032b4d');
+            oceanGrad.addColorStop(0.7, '#013861');
+            oceanGrad.addColorStop(1, '#001a33');
+        }
         ctx.fillStyle = oceanGrad;
         ctx.fillRect(0, 0, width, height);
 
@@ -324,8 +340,8 @@ class ParticleSystem {
             const rayX = width * (0.15 + i * 0.16) + Math.sin(this.causticOffset + i) * 60;
             const rayWidth = 100 + Math.sin(this.causticOffset * 0.5 + i) * 40;
             const rayGrad = ctx.createLinearGradient(rayX, 0, rayX + 80, height * 0.85);
-            rayGrad.addColorStop(0, 'rgba(100, 220, 255, 0.18)');
-            rayGrad.addColorStop(0.5, 'rgba(50, 180, 230, 0.08)');
+            rayGrad.addColorStop(0, `rgba(120, 235, 255, ${0.18 * frenzyMultiplier})`);
+            rayGrad.addColorStop(0.5, `rgba(60, 200, 255, ${0.09 * frenzyMultiplier})`);
             rayGrad.addColorStop(1, 'rgba(0, 50, 100, 0)');
 
             ctx.fillStyle = rayGrad;
