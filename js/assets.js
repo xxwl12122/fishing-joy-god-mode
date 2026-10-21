@@ -43,7 +43,9 @@
         web: 'images/web.png',
 
         coinAni1: 'images/coinAni1.png',
-        coinAni2: 'images/coinAni2.png'
+        coinAni2: 'images/coinAni2.png',
+
+        bg: 'assets/bg.jpg'
     };
 
     class AssetManager {
@@ -193,6 +195,12 @@
             const webImg = this.get('web');
             if (webImg) {
                 window.pixiTextures.web = PIXI.Texture.from(webImg);
+            }
+
+            // 7. 深海遗迹背景底图
+            const bgImg = this.get('bg');
+            if (bgImg) {
+                window.pixiTextures.bg = PIXI.Texture.from(bgImg);
             }
         }
     }

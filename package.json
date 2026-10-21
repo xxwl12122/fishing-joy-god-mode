@@ -14,7 +14,8 @@
     "package.json",
     "css/**/*",
     "js/**/*",
-    "images/**/*"
+    "images/**/*",
+    "assets/**/*"
   ],
   "build": {
     "appId": "com.fishingjoy.godmode",
@@ -38,7 +39,8 @@
       "package.json",
       "css/**/*",
       "js/**/*",
-      "images/**/*"
+      "images/**/*",
+      "assets/**/*"
     ],
     "asar": true,
     "compression": "maximum"

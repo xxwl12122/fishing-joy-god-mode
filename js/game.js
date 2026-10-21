@@ -80,6 +80,20 @@ class GameEngine {
         this.pixiApp.stage.addChild(this.effectLayer);
         this.pixiApp.stage.addChild(this.hudGfx);
 
+        // 启用全局与图层深度排序 (确保背景图层永远处于最底层)
+        this.pixiApp.stage.sortableChildren = true;
+        this.bgLayer.zIndex = 10;
+        this.seaweedLayer.zIndex = 20;
+        this.fishLayer.zIndex = 30;
+        this.netLayer.zIndex = 40;
+        this.bulletLayer.zIndex = 50;
+        this.cannonLayer.zIndex = 60;
+        this.laserLayer.zIndex = 70;
+        this.effectLayer.zIndex = 80;
+        this.hudGfx.zIndex = 90;
+
+        this.bgLayer.sortableChildren = true;
+
         window.pixiApp = this.pixiApp;
         window.pixiLayers = {
             bg: this.bgLayer,
@@ -96,8 +110,43 @@ class GameEngine {
         if (window.gameAssets) {
             window.gameAssets.initPixiTextures();
         }
+
+        // 初始化深海遗迹最底层静态贴图 (Sprite)
+        this.initBackground();
+
         if (window.particleSystem) {
             window.particleSystem.initPixiDisplay();
+        }
+    }
+
+    initBackground() {
+        // 创建深海沉船遗迹最底层静态贴图 Sprite
+        const bgTexture = (window.pixiTextures && window.pixiTextures.bg) || PIXI.Texture.from('assets/bg.jpg');
+        this.bgSprite = new PIXI.Sprite(bgTexture);
+        this.bgSprite.anchor.set(0.5, 0.5);
+        this.bgSprite.zIndex = 1; // 内部最底
+        this.bgLayer.addChildAt(this.bgSprite, 0);
+
+        this.updateBgTransform = () => {
+            if (!this.bgSprite) return;
+            const tex = this.bgSprite.texture;
+            if (!tex) return;
+            const tw = tex.orig ? tex.orig.width : (tex.baseTexture ? (tex.baseTexture.realWidth || tex.baseTexture.width) : 0);
+            const th = tex.orig ? tex.orig.height : (tex.baseTexture ? (tex.baseTexture.realHeight || tex.baseTexture.height) : 0);
+            if (tw > 0 && th > 0) {
+                // 等比缩放铺满全屏 (Cover 模式)，确保正中央暗区严格居中于屏幕
+                const scale = Math.max(this.width / tw, this.height / th);
+                this.bgSprite.scale.set(scale, scale);
+                this.bgSprite.position.set(this.width * 0.5, this.height * 0.5);
+            }
+        };
+
+        if (bgTexture.baseTexture && bgTexture.baseTexture.valid) {
+            this.updateBgTransform();
+        } else if (bgTexture.baseTexture) {
+            bgTexture.baseTexture.once('loaded', () => {
+                this.updateBgTransform();
+            });
         }
     }
 
@@ -106,6 +155,9 @@ class GameEngine {
         this.height = window.innerHeight;
         if (this.pixiApp && this.pixiApp.renderer) {
             this.pixiApp.renderer.resize(this.width, this.height);
+        }
+        if (this.updateBgTransform) {
+            this.updateBgTransform();
         }
         if (this.cannon) {
             this.cannon.x = this.width / 2;

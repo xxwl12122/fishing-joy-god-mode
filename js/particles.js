@@ -30,8 +30,9 @@ class ParticleSystem {
     initPixiDisplay() {
         if (typeof PIXI === 'undefined') return;
 
-        // 背景图层 (承载水下乱流与丁达尔神光)
+        // 背景图层 (承载水下乱流与丁达尔神光，叠加在 bgSprite 之上)
         this.bgGfx = new PIXI.Graphics();
+        this.bgGfx.zIndex = 10;
         if (window.pixiLayers && window.pixiLayers.bg) {
             window.pixiLayers.bg.addChild(this.bgGfx);
         }

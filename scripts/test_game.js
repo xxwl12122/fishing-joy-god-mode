@@ -94,6 +94,19 @@ app.whenReady().then(async () => {
             if (!report.cannonCost || !report.cannonCost.includes('无限火力')) {
                 report.errors.push('Cannon cost text incorrect: ' + report.cannonCost);
             }
+
+            // 验证深海遗迹背景贴图与层级
+            if (!g.bgSprite) {
+                report.errors.push('bgSprite not found on game instance');
+            } else {
+                report.bgSpriteScale = { x: g.bgSprite.scale.x, y: g.bgSprite.scale.y };
+                report.bgSpriteVisible = g.bgSprite.visible;
+                report.bgSpriteZIndex = g.bgSprite.zIndex;
+                if (g.bgSprite.scale.x <= 0 || g.bgSprite.scale.y <= 0) {
+                    report.errors.push('bgSprite scale invalid: ' + JSON.stringify(report.bgSpriteScale));
+                }
+            }
+
             if (window.uiManager) {
                 window.uiManager.showFrenzyWipe(15);
             }

@@ -9,7 +9,8 @@ const allowedPrefixes = [
   '/package.json',
   '/css',
   '/js',
-  '/images'
+  '/images',
+  '/assets'
 ];
 
 function shouldIgnore(file) {
