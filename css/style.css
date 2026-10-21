@@ -581,16 +581,16 @@ canvas#gameCanvas {
     letter-spacing: 2px;
 }
 
-/* ================= BIG WIN / 爆奖庆祝弹窗 ================= */
+/* ================= BIG WIN / MEGA WIN 爆奖庆祝弹窗 ================= */
 .big-win-overlay {
     position: absolute;
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
     text-align: center;
-    z-index: 25;
+    z-index: 35;
     pointer-events: none;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .big-win-overlay.show {
@@ -598,21 +598,28 @@ canvas#gameCanvas {
 }
 
 .big-win-title {
-    font-size: 54px;
+    font-size: 64px;
     font-weight: 900;
-    background: linear-gradient(180deg, #ffffff 10%, #ffeb3b 50%, #ff6d00 100%);
+    background: linear-gradient(180deg, #ffffff 0%, #fff176 30%, #ffd700 65%, #ff6d00 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 20px rgba(255, 109, 0, 0.9));
-    letter-spacing: 4px;
+    filter: drop-shadow(0 0 35px rgba(255, 215, 0, 0.95)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.8));
+    letter-spacing: 5px;
+    animation: megaWinPulse 0.4s infinite alternate ease-in-out;
+}
+
+@keyframes megaWinPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 25px #ffd700); }
+    100% { transform: scale(1.08); filter: drop-shadow(0 0 50px #ff9100) brightness(1.25); }
 }
 
 .big-win-coins {
-    font-size: 42px;
+    font-size: 44px;
     font-weight: 900;
-    color: #ffd700;
-    text-shadow: 0 0 20px #000;
-    margin-top: 8px;
+    color: #fff9c4;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 4px 10px rgba(0, 0, 0, 0.9);
+    margin-top: 10px;
+    letter-spacing: 2px;
 }
 
 /* ================= 通用模态弹窗 (图鉴/设置/救济金) ================= */

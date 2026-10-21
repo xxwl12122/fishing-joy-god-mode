@@ -388,6 +388,68 @@ class SoundManager {
         this.playBossAlert();
     }
 
+    // BOSS 受击沉闷重击音效 (重低音打击 + 龙鳞金属反震)
+    playBossHit() {
+        if (!this.ctx || this.isMuted) return;
+        this.resume();
+
+        const now = performance.now();
+        if (now - (this.lastBossHitTime || 0) < 65) return;
+        this.lastBossHitTime = now;
+
+        const ctxTime = this.ctx.currentTime;
+        // 低频下潜重击 (Sub-bass impact)
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(175, ctxTime);
+        osc.frequency.exponentialRampToValueAtTime(38, ctxTime + 0.14);
+
+        gain.gain.setValueAtTime(0.55 * this.sfxVolume, ctxTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctxTime + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(ctxTime);
+        osc.stop(ctxTime + 0.16);
+
+        // 龙鳞金属反震打击感
+        this.playNoiseThump(0.09, 0.4);
+    }
+
+    // MEGA WIN 史诗级狂欢庆祝音效
+    playMegaWin() {
+        if (!this.ctx || this.isMuted) return;
+        this.resume();
+        const now = this.ctx.currentTime;
+
+        // 华丽大五度琶音和弦
+        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const t = now + idx * 0.075;
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, t);
+
+            gain.gain.setValueAtTime(0.42 * this.sfxVolume, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+            osc.start(t);
+            osc.stop(t + 0.48);
+        });
+
+        // 伴随连续清脆金币连鸣
+        for (let i = 0; i < 16; i++) {
+            setTimeout(() => {
+                this.playCoin(i % 8);
+            }, i * 60);
+        }
+    }
+
     // 自动循环悠扬的海底环境合成 BGM
     startBgm() {
         if (this.isBgmPlaying) return;

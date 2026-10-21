@@ -21,6 +21,10 @@ class ParticleSystem {
         this.freezeAlpha = 0;
         this.causticOffset = 0;
 
+        // 全屏光效与警报控制
+        this.redAlertTimer = 0;
+        this.goldFlashAlpha = 0;
+
         this.coinSpritePool = [];
 
         this.initSeaweeds();
@@ -60,6 +64,7 @@ class ParticleSystem {
         this.lightningGfx = new PIXI.Graphics();
         this.freezeGfx = new PIXI.Graphics();
         this.scoreContainer = new PIXI.Container();
+        this.screenOverlayGfx = new PIXI.Graphics();
 
         this.effectContainer.addChild(this.bubbleGfx);
         this.effectContainer.addChild(this.coinTrailGfx);
@@ -70,6 +75,7 @@ class ParticleSystem {
         this.effectContainer.addChild(this.lightningGfx);
         this.effectContainer.addChild(this.freezeGfx);
         this.effectContainer.addChild(this.scoreContainer);
+        this.effectContainer.addChild(this.screenOverlayGfx);
 
         if (window.pixiLayers && window.pixiLayers.effect) {
             window.pixiLayers.effect.addChild(this.effectContainer);
@@ -111,12 +117,22 @@ class ParticleSystem {
         });
     }
 
-    addCoin(startX, startY, targetX, targetY, value = 10, count = 5) {
-        if (this.coins.length >= 100) return;
-        const coinCount = Math.min(Math.max(4, Math.floor(value / 6)), 16);
+    triggerRedAlert(duration = 75) {
+        this.redAlertTimer = duration;
+        this.shake(22, 45);
+    }
+
+    triggerGoldFlash(alpha = 0.8) {
+        this.goldFlashAlpha = Math.max(this.goldFlashAlpha, alpha);
+    }
+
+    addCoin(startX, startY, targetX, targetY, value = 10, count = null) {
+        if (this.coins.length >= 450) return;
+        // 如果传入了固定数量则优先使用（大鱼至少 20 枚），否则按分数比例计算
+        const coinCount = count !== null ? count : Math.min(Math.max(5, Math.floor(value / 5)), 28);
         for (let i = 0; i < coinCount; i++) {
             const spreadAngle = Math.random() * Math.PI * 2;
-            const spreadDist = 25 + Math.random() * 75;
+            const spreadDist = 30 + Math.random() * 95;
             const burstX = startX + Math.cos(spreadAngle) * spreadDist;
             const burstY = startY + Math.sin(spreadAngle) * spreadDist;
 
@@ -130,13 +146,52 @@ class ParticleSystem {
                 targetX: targetX,
                 targetY: targetY,
                 progress: 0,
-                speed: 0.024 + Math.random() * 0.016,
-                delay: i * 2.5,
+                speed: 0.022 + Math.random() * 0.016,
+                delay: i * 1.8,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: 0.18 + Math.random() * 0.12,
-                size: 16 + (value >= 100 ? 8 : (value >= 50 ? 4 : 0)),
-                isBig: value >= 60,
-                soundIndex: i,
+                rotSpeed: 0.2 + Math.random() * 0.15,
+                size: 18 + (value >= 100 ? 10 : (value >= 40 ? 5 : 0)),
+                isBig: value >= 40,
+                soundIndex: i % 10,
+                trail: []
+            });
+        }
+    }
+
+    // 史诗级 BOSS 击杀全屏爆金币狂欢 (从中心向四周喷涌 + 全屏暴雨 + 磁吸飞向计分板)
+    triggerBossMegaWinEruption(startX, startY, targetX, targetY) {
+        this.triggerGoldFlash(0.85);
+        this.shake(45, 60);
+        this.addExplosion(startX, startY, 520, '#ffd700');
+        this.addCoinRain(100);
+
+        const sw = window.innerWidth || 1280;
+        const sh = window.innerHeight || 720;
+        const count = 100;
+
+        for (let i = 0; i < count; i++) {
+            const spreadAngle = Math.random() * Math.PI * 2;
+            const spreadDist = 140 + Math.random() * (Math.min(sw, sh) * 0.48);
+            const burstX = Math.max(60, Math.min(sw - 60, startX + Math.cos(spreadAngle) * spreadDist));
+            const burstY = Math.max(60, Math.min(sh - 60, startY + Math.sin(spreadAngle) * spreadDist));
+
+            this.coins.push({
+                x: startX,
+                y: startY,
+                startX: startX,
+                startY: startY,
+                burstX: burstX,
+                burstY: burstY,
+                targetX: targetX,
+                targetY: targetY,
+                progress: 0,
+                speed: 0.016 + Math.random() * 0.014,
+                delay: Math.floor(i * 1.2),
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: 0.22 + Math.random() * 0.18,
+                size: 26,
+                isBig: true,
+                soundIndex: i % 12,
                 trail: []
             });
         }
@@ -149,13 +204,13 @@ class ParticleSystem {
             this.coinRain.push({
                 x: Math.random() * sw,
                 y: -30 - Math.random() * 250,
-                vx: (Math.random() - 0.5) * 4,
-                vy: 5 + Math.random() * 8,
-                radius: 11 + Math.random() * 6,
+                vx: (Math.random() - 0.5) * 5,
+                vy: 6 + Math.random() * 9,
+                radius: 12 + Math.random() * 8,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.25,
+                rotSpeed: (Math.random() - 0.5) * 0.3,
                 alpha: 1,
-                life: 130
+                life: 140
             });
         }
     }
@@ -407,6 +462,10 @@ class ParticleSystem {
                 this.hitSparks.splice(i, 1);
             }
         }
+
+        // 10. 全屏光效步进
+        if (this.redAlertTimer > 0) this.redAlertTimer--;
+        if (this.goldFlashAlpha > 0) this.goldFlashAlpha = Math.max(0, this.goldFlashAlpha - 0.025);
     }
 
     // PixiJS WebGL 硬件同步渲染管线
@@ -570,6 +629,33 @@ class ParticleSystem {
 
         // 10. 3D 旋转金币 Pixi 精灵同步
         this.syncPixiCoins();
+
+        // 11. 全屏红色预警脉冲与全屏金光闪烁渲染
+        if (this.screenOverlayGfx) {
+            this.screenOverlayGfx.clear();
+            if (this.redAlertTimer > 0) {
+                const pulse = (Math.sin(this.redAlertTimer * 0.28) + 1) * 0.5;
+                const alertAlpha = 0.22 * pulse;
+                // 全屏暗红警报闪光
+                this.screenOverlayGfx.beginFill(0xb71c1c, alertAlpha);
+                this.screenOverlayGfx.drawRect(0, 0, width, height);
+                this.screenOverlayGfx.endFill();
+
+                // 屏幕四周醒目红色警报框与暗角
+                this.screenOverlayGfx.lineStyle(10, 0xff1744, 0.45 + 0.5 * pulse);
+                this.screenOverlayGfx.drawRect(5, 5, width - 10, height - 10);
+            }
+
+            if (this.goldFlashAlpha > 0.01) {
+                this.screenOverlayGfx.beginFill(0xffd700, this.goldFlashAlpha * 0.65);
+                this.screenOverlayGfx.drawRect(0, 0, width, height);
+                this.screenOverlayGfx.endFill();
+
+                this.screenOverlayGfx.beginFill(0xffffff, this.goldFlashAlpha * 0.35);
+                this.screenOverlayGfx.drawRect(0, 0, width, height);
+                this.screenOverlayGfx.endFill();
+            }
+        }
     }
 
     syncPixiCoins() {

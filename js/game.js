@@ -37,8 +37,8 @@ class GameEngine {
 
         // 鱼群波次刷新计时 (支持满屏 100+ 条鱼狂野鱼海)
         this.spawnTick = 0;
-        this.bossTimer = 0;
-        this.bossInterval = 3600; // 约 60 秒刷新一次金龙 BOSS
+        this.bossTimer = 1800; // 开局 30 秒首次刷新金龙 BOSS，后续每 60 秒刷新
+        this.bossInterval = 3600; // 约 60 秒刷新一次金龙 BOSS (60fps * 60)
 
         this.initCannon();
         this.initEvents();
@@ -161,12 +161,12 @@ class GameEngine {
         }
         if (this.cannon) {
             this.cannon.x = this.width / 2;
-            this.cannon.y = this.height - 35;
+            this.cannon.y = this.height - 40;
         }
     }
 
     initCannon() {
-        this.cannon = new window.Cannon(this.width / 2, this.height - 35);
+        this.cannon = new window.Cannon(this.width / 2, this.height - 40);
         this.cannon.setLevel(9); // 无敌破解版：开局即满级【Lv.10 灭世龙神神圣炮】
         this.cannon.laserEnergy = 100;
         if (window.uiManager) {
@@ -285,6 +285,9 @@ class GameEngine {
                     break;
                 case 'KeyH':
                     if (window.uiManager) window.uiManager.openAlmanac();
+                    break;
+                case 'KeyB':
+                    this.spawnBoss();
                     break;
                 case 'KeyM':
                     this.toggleMute();
@@ -536,7 +539,11 @@ class GameEngine {
     }
 
     spawnBoss() {
-        // 清理 30% 低分小鱼
+        if (this.currentBoss && !this.currentBoss.isDead && !this.currentBoss.isDying) {
+            return;
+        }
+
+        // 清理 30% 低分小鱼腾出游动空间
         let removeCount = Math.floor(this.fishes.length * 0.3);
         for (let i = this.fishes.length - 1; i >= 0 && removeCount > 0; i--) {
             if (this.fishes[i].score <= 7 && !this.fishes[i].isDying) {
@@ -547,20 +554,23 @@ class GameEngine {
         }
 
         if (window.soundManager) {
-            if (typeof window.soundManager.playBossAlert === 'function') window.soundManager.playBossAlert();
-            else if (typeof window.soundManager.playBossWarning === 'function') window.soundManager.playBossWarning();
+            window.soundManager.playBossAlert();
         }
-        if (window.particleSystem) window.particleSystem.shake(25, 45);
+        if (window.particleSystem) {
+            window.particleSystem.triggerRedAlert(80);
+            window.particleSystem.shake(25, 45);
+        }
 
         const dragon = this.spawnFish('golden_dragon');
+        dragon.hp = dragon.maxHp = 650;
         this.currentBoss = dragon;
         if (window.uiManager) {
             window.uiManager.showBossBanner();
-            window.uiManager.showBossHp(dragon.maxHp || 120);
+            window.uiManager.showBossHp(dragon.maxHp);
         }
 
-        // 召唤 10 条剑鱼护航编队
-        this.spawnSchool('swordfish', 10);
+        // 召唤 8 条剑鱼护航编队
+        this.spawnSchool('swordfish', 8);
     }
 
     findHighestValueFish() {
@@ -630,25 +640,30 @@ class GameEngine {
 
         // 震屏与金币飞行
         if (window.particleSystem) {
+            const isBigFish = fish.score >= 40 || fish.type === 'golden_dragon';
             const shakePower = Math.min(32, 10 + Math.sqrt(fish.score) * 2.2);
             window.particleSystem.shake(shakePower, 18);
 
             const targetPos = { x: 260, y: 35 };
-            window.particleSystem.addCoin(fish.x, fish.y, targetPos.x, targetPos.y, gainedCoins, Math.min(16, Math.max(4, Math.floor(fish.score / 5))));
+            // 大鱼击杀：至少 20 枚金币喷涌飞向计分板
+            const burstCoinCount = isBigFish ? Math.min(32, 20 + Math.floor(fish.score / 15)) : Math.min(16, Math.max(5, Math.floor(fish.score / 5)));
+            window.particleSystem.addCoin(fish.x, fish.y, targetPos.x, targetPos.y, gainedCoins, burstCoinCount);
             window.particleSystem.addScore(fish.x, fish.y, `+${gainedCoins}`, fish.score >= 100);
         }
 
-        // 远古金龙 BOSS 专属击破奖励：全屏金币暴雨与百万大奖
+        // 远古金龙 BOSS 专属击破奖励：全屏爆金币狂欢 + 漫天暴雨 + MEGA WIN
         if (fish.type === 'golden_dragon') {
             this.currentBoss = null;
+            const targetPos = { x: 260, y: 35 };
             if (window.uiManager) {
                 window.uiManager.hideBossHp();
-                window.uiManager.showBigWin(38888);
+                window.uiManager.showBigWin(gainedCoins || 88888, 'MEGA WIN 🎉');
             }
             if (window.particleSystem) {
-                window.particleSystem.addCoinRain(85);
-                window.particleSystem.shake(45, 60);
-                window.particleSystem.addExplosion(fish.x, fish.y, 450, '#ffd700');
+                window.particleSystem.triggerBossMegaWinEruption(fish.x, fish.y, targetPos.x, targetPos.y);
+            }
+            if (window.soundManager) {
+                window.soundManager.playMegaWin();
             }
         } else if (gainedCoins >= 3000 && window.uiManager) {
             window.uiManager.showBigWin(gainedCoins);
@@ -679,6 +694,7 @@ class GameEngine {
         if (window.particleSystem) {
             window.particleSystem.addExplosion(bx, by, 320, '#ff1744');
             window.particleSystem.shake(35, 40);
+            window.particleSystem.addCoinRain(65); // 引爆全屏漫天金币雨
         }
         if (window.soundManager) window.soundManager.playBomb();
 
@@ -749,11 +765,16 @@ class GameEngine {
                     window.particleSystem.addHitSparks(fish.x, fish.y, 0xff0055);
                 }
                 if (fish.type === 'golden_dragon') {
-                    fish.takeHit(25);
+                    fish.takeHit(35);
+                    if (window.soundManager) {
+                        window.soundManager.playBossHit();
+                    }
                     if (window.uiManager) {
                         window.uiManager.updateBossHp(fish.hp, fish.maxHp);
                     }
                     if (window.particleSystem) {
+                        window.particleSystem.shake(3.0, 5);
+                        window.particleSystem.addHitSparks(fish.x, fish.y, 0xffd700);
                         window.particleSystem.addCoin(fish.x, fish.y, 260, 35, 600, 4);
                         window.particleSystem.addScore(fish.x, fish.y, '+600', false);
                     }
@@ -853,12 +874,17 @@ class GameEngine {
                                 window.particleSystem.addHitSparks(target.x, target.y, b.colorNum);
                             }
                             if (target.type === 'golden_dragon') {
-                                const bossDmg = b.levelConfig.level >= 10 ? 15 : (b.levelConfig.level >= 6 ? 9 : 5);
+                                const bossDmg = b.levelConfig.level >= 10 ? 25 : (b.levelConfig.level >= 6 ? 16 : 10);
                                 target.takeHit(bossDmg);
+                                if (window.soundManager) {
+                                    window.soundManager.playBossHit();
+                                }
                                 if (window.uiManager) {
                                     window.uiManager.updateBossHp(target.hp, target.maxHp);
                                 }
                                 if (window.particleSystem) {
+                                    window.particleSystem.shake(3.5, 6);
+                                    window.particleSystem.addHitSparks(target.x, target.y, 0xffd700);
                                     window.particleSystem.addCoin(target.x, target.y, 260, 35, 300, 3);
                                     window.particleSystem.addScore(target.x, target.y, '+300', false);
                                 }

@@ -18,6 +18,7 @@ class UIManager {
         this.frenzyWipeTitleEl = document.getElementById('frenzy-wipe-title');
         this.frenzyTimer = null;
         this.bigWinOverlayEl = document.getElementById('big-win-overlay');
+        this.bigWinTitleEl = document.getElementById('big-win-title');
         this.bigWinCoinsEl = document.getElementById('big-win-coins');
         this.comboContainerEl = document.getElementById('combo-container');
         this.comboCountEl = document.getElementById('combo-count');
@@ -174,13 +175,16 @@ class UIManager {
         }
     }
 
-    showBigWin(score) {
+    showBigWin(score, title = 'MEGA WIN 🎉') {
         if (!this.bigWinOverlayEl || !this.bigWinCoinsEl) return;
+        if (this.bigWinTitleEl) {
+            this.bigWinTitleEl.innerText = title;
+        }
         this.bigWinCoinsEl.innerText = `+${score.toLocaleString()} 金币`;
         this.bigWinOverlayEl.classList.add('show');
         setTimeout(() => {
             this.bigWinOverlayEl.classList.remove('show');
-        }, 2200);
+        }, 2500);
     }
 
     showRescueModal() {

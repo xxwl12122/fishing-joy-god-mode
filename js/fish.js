@@ -97,12 +97,12 @@ const FISH_CONFIGS = {
     },
     golden_dragon: {
         name: '远古金龙 (BOSS)',
-        score: 300,
-        speed: 2.0,
-        baseHp: 120,
-        width: 280,
-        height: 90,
-        desc: '神话中的东方神龙，吞吐祥瑞金光，击败可触发巨奖！'
+        score: 500,
+        speed: 1.6,
+        baseHp: 650,
+        width: 520,
+        height: 140,
+        desc: '神话中的东方神龙，吞吐祥瑞金光，击败可触发巨额全屏爆金币！'
     },
     bomb_fish: {
         name: '烈焰炸弹鱼',
@@ -230,7 +230,7 @@ class Fish {
         if (this.type === 'golden_dragon') {
             if (!this.segments) {
                 this.segments = [];
-                for (let i = 0; i < 14; i++) {
+                for (let i = 0; i < 22; i++) {
                     this.segments.push({ x: 0, y: 0, angle: 0 });
                 }
             }
@@ -315,7 +315,7 @@ class Fish {
             this.segments[0].y = this.y;
             this.segments[0].angle = this.angle;
 
-            const segDist = 20;
+            const segDist = 25;
             for (let i = 1; i < this.segments.length; i++) {
                 const prev = this.segments[i - 1];
                 const curr = this.segments[i];
@@ -355,6 +355,17 @@ class Fish {
         if (this.hitFlash > 0) this.hitFlash--;
         if (this.pufferScale > 1) {
             this.pufferScale = Math.max(1, this.pufferScale - 0.04);
+        }
+
+        // 远古金龙游动时释放祥瑞金色拖尾粒子
+        if (this.type === 'golden_dragon' && this.segments && this.swimTick % 3 === 0) {
+            if (window.particleSystem) {
+                const tailIdx = Math.min(this.segments.length - 1, 16);
+                window.particleSystem.addHitSparks(this.segments[tailIdx].x, this.segments[tailIdx].y, 0xffd700);
+                if (this.swimTick % 6 === 0) {
+                    window.particleSystem.addHitSparks(this.segments[6].x, this.segments[6].y, 0xffea00);
+                }
+            }
         }
 
         if (this.t >= 1) {
@@ -445,56 +456,137 @@ class Fish {
         const gfx = this.dragonGfx;
         gfx.clear();
 
-        // 龙身关节连线与关节球
+        const isFlashing = this.hitFlash > 0;
+        const mainColor = isFlashing ? 0xffffff : 0xffd700;
+        const darkColor = isFlashing ? 0xffea00 : 0xff8f00;
+        const spineColor = isFlashing ? 0xffffff : 0xff1744;
+
+        // 1. 龙身多关节与鳞片渲染 (从龙尾到龙颈)
         for (let i = this.segments.length - 1; i >= 0; i--) {
             const seg = this.segments[i];
-            const size = 28 - i * 1.2;
+            const size = 35 - i * 0.95;
             const relX = seg.x - this.x;
             const relY = seg.y - this.y;
 
-            gfx.beginFill(0xffa000, 0.9);
-            gfx.drawCircle(relX, relY, size * 0.9);
-            gfx.endFill();
-
-            gfx.beginFill(0xffd700, 0.95);
-            gfx.drawCircle(relX, relY, size * 0.6);
-            gfx.endFill();
-
-            // 龙鳍
-            gfx.beginFill(0xff3d00, 0.8);
+            // 龙背祥瑞火焰鳍
+            const spineAng = seg.angle + Math.PI / 2;
+            const spineLen = size * 1.5;
+            gfx.beginFill(spineColor, 0.85);
             gfx.drawPolygon([
-                relX, relY - size * 0.8,
-                relX - size * 0.6, relY - size * 1.5,
-                relX + size * 0.6, relY - size * 0.8
+                relX - Math.cos(seg.angle) * (size * 0.5), relY - Math.sin(seg.angle) * (size * 0.5),
+                relX + Math.cos(spineAng) * spineLen, relY + Math.sin(spineAng) * spineLen,
+                relX + Math.cos(seg.angle) * (size * 0.5), relY + Math.sin(seg.angle) * (size * 0.5)
             ]);
+            gfx.endFill();
+
+            // 龙爪 (分布于第 5、12 节)
+            if (i === 5 || i === 12) {
+                const clawAng1 = seg.angle + Math.PI * 0.6;
+                const clawAng2 = seg.angle - Math.PI * 0.6;
+                const cLen = size * 1.8;
+                gfx.lineStyle(4, darkColor, 0.9);
+                gfx.moveTo(relX, relY);
+                gfx.lineTo(relX + Math.cos(clawAng1) * cLen, relY + Math.sin(clawAng1) * cLen);
+                gfx.moveTo(relX, relY);
+                gfx.lineTo(relX + Math.cos(clawAng2) * cLen, relY + Math.sin(clawAng2) * cLen);
+            }
+
+            // 龙身外层祥云金环
+            gfx.beginFill(darkColor, 0.9);
+            gfx.drawCircle(relX, relY, size * 0.95);
+            gfx.endFill();
+
+            // 龙身主体黄金球
+            gfx.beginFill(mainColor, 0.98);
+            gfx.drawCircle(relX, relY, size * 0.68);
+            gfx.endFill();
+
+            // 龙鳞高光
+            gfx.beginFill(0xffffff, 0.85);
+            gfx.drawCircle(relX - size * 0.2, relY - size * 0.2, size * 0.25);
             gfx.endFill();
         }
 
-        // 龙头
-        gfx.beginFill(0xffd700, 1);
-        gfx.drawEllipse(0, 0, 38, 26);
+        // 2. 龙头装配 (严格沿 this.angle 旋转)
+        const cosA = Math.cos(this.angle);
+        const sinA = Math.sin(this.angle);
+        const rot = (px, py) => ({
+            x: px * cosA - py * sinA,
+            y: px * sinA + py * cosA
+        });
+
+        // 龙角 (鹿角分叉造型)
+        gfx.lineStyle(4.5, isFlashing ? 0xffffff : 0xffea00, 1);
+        const h1 = rot(-10, -22), h2 = rot(-36, -52), h3 = rot(-24, -68), h4 = rot(-46, -60);
+        gfx.moveTo(h1.x, h1.y); gfx.lineTo(h2.x, h2.y); gfx.lineTo(h3.x, h3.y);
+        gfx.moveTo(h2.x, h2.y); gfx.lineTo(h4.x, h4.y);
+
+        const h1b = rot(-10, 22), h2b = rot(-36, 52), h3b = rot(-24, 68), h4b = rot(-46, 60);
+        gfx.moveTo(h1b.x, h1b.y); gfx.lineTo(h2b.x, h2b.y); gfx.lineTo(h3b.x, h3b.y);
+        gfx.moveTo(h2b.x, h2b.y); gfx.lineTo(h4b.x, h4b.y);
+
+        // 头部主轮廓
+        const headPoints = [
+            rot(45, 0),
+            rot(30, -22),
+            rot(-5, -28),
+            rot(-32, -18),
+            rot(-32, 18),
+            rot(-5, 28),
+            rot(30, 22)
+        ];
+        gfx.beginFill(mainColor, 1);
+        gfx.drawPolygon(headPoints.flatMap(p => [p.x, p.y]));
         gfx.endFill();
 
-        // 龙角
-        gfx.lineStyle(4, 0xffea00, 1);
-        gfx.moveTo(-5, -18);
-        gfx.lineTo(-24, -42);
-        gfx.lineTo(-14, -55);
-        gfx.moveTo(-5, 18);
-        gfx.lineTo(-24, 42);
-        gfx.lineTo(-14, 55);
+        // 龙吻与下颌
+        const snout = rot(28, 0);
+        gfx.beginFill(darkColor, 1);
+        gfx.drawCircle(snout.x, snout.y, 14);
+        gfx.endFill();
 
-        // 龙眼
+        // 威严赤红龙眼
+        const eye1 = rot(10, -15);
+        const eye2 = rot(10, 15);
         gfx.beginFill(0xff1744, 1);
-        gfx.drawCircle(18, -10, 5);
-        gfx.drawCircle(18, 10, 5);
+        gfx.drawCircle(eye1.x, eye1.y, 6.5);
+        gfx.drawCircle(eye2.x, eye2.y, 6.5);
+        gfx.endFill();
+        gfx.beginFill(0xffffff, 1);
+        gfx.drawCircle(eye1.x + cosA * 2, eye1.y + sinA * 2, 2.2);
+        gfx.drawCircle(eye2.x + cosA * 2, eye2.y + sinA * 2, 2.2);
         gfx.endFill();
 
-        // 龙珠
-        const pearlPulse = Math.sin(this.swimTick * 0.1) * 4;
-        gfx.beginFill(0xffffff, 1);
-        gfx.drawCircle(48 + pearlPulse, 0, 13);
+        // 飘逸灵动龙须 (随游动水流柔美起伏)
+        const whiskerWave1 = Math.sin(this.swimTick * 0.12) * 14;
+        const whiskerWave2 = Math.cos(this.swimTick * 0.12) * 14;
+        gfx.lineStyle(2.5, 0xffea00, 0.95);
+        const wBase1 = rot(38, -8);
+        const wMid1 = rot(70, -24 + whiskerWave1);
+        const wTip1 = rot(110, -32 + whiskerWave2);
+        gfx.moveTo(wBase1.x, wBase1.y);
+        gfx.bezierCurveTo(wMid1.x, wMid1.y, wMid1.x, wMid1.y, wTip1.x, wTip1.y);
+
+        const wBase2 = rot(38, 8);
+        const wMid2 = rot(70, 24 - whiskerWave1);
+        const wTip2 = rot(110, 32 - whiskerWave2);
+        gfx.moveTo(wBase2.x, wBase2.y);
+        gfx.bezierCurveTo(wMid2.x, wMid2.y, wMid2.x, wMid2.y, wTip2.x, wTip2.y);
+
+        // 祥瑞吞吐龙珠
+        const pearlPulse = Math.sin(this.swimTick * 0.14) * 6;
+        const pearlPos = rot(72 + pearlPulse, 0);
+
+        gfx.beginFill(0xffea00, 0.45);
+        gfx.drawCircle(pearlPos.x, pearlPos.y, 22 + Math.abs(pearlPulse));
         gfx.endFill();
+
+        gfx.beginFill(0xffffff, 1);
+        gfx.drawCircle(pearlPos.x, pearlPos.y, 13);
+        gfx.endFill();
+
+        gfx.lineStyle(2, 0x00e5ff, 0.9);
+        gfx.drawCircle(pearlPos.x, pearlPos.y, 16);
     }
 
     takeHit(damage = 1) {
@@ -512,6 +604,14 @@ class Fish {
 
     isHit(x, y, radius) {
         if (this.isDead || this.isDying) return false;
+        if (this.type === 'golden_dragon' && this.segments) {
+            if (Math.hypot(this.x - x, this.y - y) < (50 + radius)) return true;
+            for (let i = 0; i < this.segments.length; i += 2) {
+                const seg = this.segments[i];
+                if (Math.hypot(seg.x - x, seg.y - y) < (36 + radius)) return true;
+            }
+            return false;
+        }
         const dist = Math.hypot(this.x - x, this.y - y);
         return dist < (this.width * 0.48 + radius);
     }

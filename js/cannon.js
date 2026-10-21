@@ -186,6 +186,10 @@ class Cannon {
 
         this.view = new PIXI.Container();
 
+        // 0. 底部旋转蓝色高能等离子光环 (置于最底层，烘托神级炮台底座)
+        this.baseAuraGfx = new PIXI.Graphics();
+        this.view.addChild(this.baseAuraGfx);
+
         // 1. 全息战术激光瞄准线
         this.aimGfx = new PIXI.Graphics();
         this.view.addChild(this.aimGfx);
@@ -203,9 +207,9 @@ class Cannon {
         this.cannonSprite = new PIXI.Sprite(cannonTex);
         // 关键对齐：锚点 X=0.5 (中轴), Y=0.7037 (旋转中心轴，完美对齐底盘转盘)
         this.cannonSprite.anchor.set(0.5, 0.7037);
-        // 缩放到高清街机黄金比例：宽度 94px，高度 144px
-        this.cannonSprite.width = 94;
-        this.cannonSprite.height = 144;
+        // 黄金比例完美贴合：宽度 102px，高度 152px
+        this.cannonSprite.width = 102;
+        this.cannonSprite.height = 152;
         this.turret.addChild(this.cannonSprite);
 
         // 3.2 炮口高能等离子开火激波
@@ -268,9 +272,15 @@ class Cannon {
         this.recoil = 16;
         this.muzzleFlash = 1.0;
 
+        // 开火轻微屏幕震动，让每次发射打击感十足
+        if (window.particleSystem) {
+            const shakePower = this.isRageMode ? 3.2 : 2.0;
+            window.particleSystem.shake(shakePower, 5);
+        }
+
         const cfg = this.getCurrentConfig();
-        // 视觉精准对齐：贴图高度 144px，anchorY = 0.7037，中心轴到炮口的距离为 144 * 0.7037 = 101.3px
-        const currentMuzzleDist = 101.3 - this.recoil * 0.45;
+        // 视觉精准对齐：贴图高度 152px，anchorY = 0.7037，中心轴到炮口的距离为 152 * 0.7037 = 107.0px
+        const currentMuzzleDist = 107.0 - this.recoil * 0.45;
         const muzzleX = this.x + Math.cos(this.angle) * currentMuzzleDist;
         const muzzleY = this.y + Math.sin(this.angle) * currentMuzzleDist;
 
@@ -355,11 +365,63 @@ class Cannon {
         this.view.x = this.x;
         this.view.y = this.y;
 
-        // 1. 全息战术激光瞄准线 (起点严格对齐炮口尖端 102px)
+        // 0. 底部旋转蓝色高能等离子光环 (围绕 (0, 0) 底座顺畅流转)
+        if (this.baseAuraGfx) {
+            this.baseAuraGfx.clear();
+            const ringRot = performance.now() * 0.0018;
+            const coreBreath = (Math.sin(performance.now() * 0.006) + 1) * 0.5;
+            const fireAuraBoost = this.muzzleFlash * 0.45;
+
+            // 0.1 底部重装暗钛基盘
+            this.baseAuraGfx.beginFill(0x061426, 0.92);
+            this.baseAuraGfx.lineStyle(2.5, 0x0091ea, 0.85);
+            this.baseAuraGfx.drawCircle(0, 0, 52);
+            this.baseAuraGfx.endFill();
+
+            // 0.2 外层机械刻度光环 (顺时针旋转)
+            const outerR = 47;
+            this.baseAuraGfx.lineStyle(2.2, 0x00e5ff, 0.7 + fireAuraBoost);
+            for (let i = 0; i < 6; i++) {
+                const a = ringRot + (i * Math.PI * 2) / 6;
+                this.baseAuraGfx.arc(0, 0, outerR, a, a + 0.65);
+            }
+
+            // 0.3 中层高频聚能能环 (逆时针反向旋转)
+            const midR = 36;
+            this.baseAuraGfx.lineStyle(2.0, 0x2979ff, 0.8 + fireAuraBoost);
+            for (let i = 0; i < 4; i++) {
+                const a = -ringRot * 1.5 + (i * Math.PI * 2) / 4;
+                this.baseAuraGfx.arc(0, 0, midR, a, a + 0.95);
+            }
+
+            // 0.4 等离子微粒节点
+            for (let k = 0; k < 8; k++) {
+                const ang = ringRot * 0.8 + (k * Math.PI * 2) / 8;
+                const dotR = 26 + Math.sin(coreBreath * Math.PI + k) * 3;
+                this.baseAuraGfx.beginFill(0x00e5ff, 0.85);
+                this.baseAuraGfx.drawCircle(Math.cos(ang) * dotR, Math.sin(ang) * dotR, 2.2);
+                this.baseAuraGfx.endFill();
+            }
+
+            // 0.5 内层等离子能量核心光斑 (随开火与呼吸脉动)
+            this.baseAuraGfx.beginFill(0x00b0ff, 0.35 + coreBreath * 0.2 + fireAuraBoost);
+            this.baseAuraGfx.drawCircle(0, 0, 24 + coreBreath * 4 + fireAuraBoost * 10);
+            this.baseAuraGfx.endFill();
+
+            this.baseAuraGfx.beginFill(0x00e5ff, 0.75 + fireAuraBoost * 0.25);
+            this.baseAuraGfx.drawCircle(0, 0, 14 + coreBreath * 2);
+            this.baseAuraGfx.endFill();
+
+            this.baseAuraGfx.beginFill(0xffffff, 0.95);
+            this.baseAuraGfx.drawCircle(0, 0, 6 + coreBreath);
+            this.baseAuraGfx.endFill();
+        }
+
+        // 1. 全息战术激光瞄准线 (起点严格对齐炮口尖端 107px)
         if (this.aimGfx) {
             this.aimGfx.clear();
             const maxDist = 950;
-            const startDist = 102;
+            const startDist = 107;
             const startX = Math.cos(this.angle) * startDist;
             const startY = Math.sin(this.angle) * startDist;
             const targetX = Math.cos(this.angle) * maxDist;
@@ -388,8 +450,8 @@ class Cannon {
                 }
 
                 // 物理后座力：向后滑动 + 弹性缩放 (Squash & Stretch)
-                const baseW = 94;
-                const baseH = 144;
+                const baseW = 102;
+                const baseH = 152;
                 const recoilCompress = this.recoil * 0.45;
                 this.cannonSprite.y = recoilCompress;
                 // 开火时横向微展，纵向后坐压缩
@@ -397,30 +459,34 @@ class Cannon {
                 this.cannonSprite.height = baseH * (1 - this.recoil * 0.008);
             }
 
-            // 2.2 炮口开火等离子激波与火焰 (精准附着于炮口 tip Y = -101.3 + recoilCompress)
+            // 2.2 炮口开火等离子激波与火焰 (精准附着于炮口 tip Y = -107.0 + recoilCompress)
             if (this.muzzleFlashGfx) {
                 this.muzzleFlashGfx.clear();
                 if (this.muzzleFlash > 0) {
-                    const mY = -101.3 + this.recoil * 0.45;
+                    const mY = -107.0 + this.recoil * 0.45;
 
                     // 枪口横向扩散等离子激波
-                    this.muzzleFlashGfx.lineStyle(2, 0x00e5ff, this.muzzleFlash);
-                    this.muzzleFlashGfx.moveTo(-24 * this.muzzleFlash, mY);
-                    this.muzzleFlashGfx.lineTo(24 * this.muzzleFlash, mY);
+                    this.muzzleFlashGfx.lineStyle(2.5, 0x00e5ff, this.muzzleFlash);
+                    this.muzzleFlashGfx.moveTo(-26 * this.muzzleFlash, mY);
+                    this.muzzleFlashGfx.lineTo(26 * this.muzzleFlash, mY);
 
                     // 耀眼菱形激波 (Shock Diamond)
                     this.muzzleFlashGfx.beginFill(0xffffff, this.muzzleFlash);
                     this.muzzleFlashGfx.drawPolygon([
-                        0, mY - 26 * this.muzzleFlash,
-                        10 * this.muzzleFlash, mY - 6,
-                        0, mY + 6,
-                        -10 * this.muzzleFlash, mY - 6
+                        0, mY - 28 * this.muzzleFlash,
+                        12 * this.muzzleFlash, mY - 7,
+                        0, mY + 7,
+                        -12 * this.muzzleFlash, mY - 7
                     ]);
                     this.muzzleFlashGfx.endFill();
 
                     // 外层金青等离子烈焰
-                    this.muzzleFlashGfx.beginFill(0x00e5ff, this.muzzleFlash * 0.6);
-                    this.muzzleFlashGfx.drawCircle(0, mY - 8, 14 * this.muzzleFlash);
+                    this.muzzleFlashGfx.beginFill(0x00e5ff, this.muzzleFlash * 0.65);
+                    this.muzzleFlashGfx.drawCircle(0, mY - 8, 16 * this.muzzleFlash);
+                    this.muzzleFlashGfx.endFill();
+
+                    this.muzzleFlashGfx.beginFill(0xffea00, this.muzzleFlash * 0.85);
+                    this.muzzleFlashGfx.drawCircle(0, mY - 4, 9 * this.muzzleFlash);
                     this.muzzleFlashGfx.endFill();
                 }
             }
@@ -431,7 +497,7 @@ class Cannon {
             this.laserGfx.clear();
             if (this.isFiringLaser) {
                 const len = 1750;
-                const startDist = 101.3;
+                const startDist = 107.0;
                 const startX = Math.cos(this.angle) * startDist;
                 const startY = Math.sin(this.angle) * startDist;
                 const endX = Math.cos(this.angle) * len;
