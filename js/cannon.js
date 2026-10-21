@@ -248,11 +248,13 @@ class Cannon {
             if (this.recoil < 0.2) this.recoil = 0;
         }
 
-        // 狂暴模式倒计时
-        if (this.isRageMode) {
+        // 狂暴模式倒计时 (若为手动常开，则等待玩家手动取消)
+        if (this.isRageMode && this.rageTimer > 0 && this.rageTimer < 90000000) {
             this.rageTimer--;
             if (this.rageTimer <= 0) {
                 this.isRageMode = false;
+                const el = document.getElementById('skill-rage');
+                if (el) el.classList.remove('active');
             }
         }
 

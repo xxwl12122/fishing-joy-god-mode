@@ -149,10 +149,10 @@ class GameEngine {
                     this.toggleAutoSkill();
                     break;
                 case '3':
-                    this.triggerRageSkill();
+                    this.toggleRageSkill();
                     break;
                 case '4':
-                    this.triggerFreezeSkill();
+                    this.toggleFreezeSkill();
                     break;
                 case '5':
                     this.triggerLaserSkill();
@@ -224,8 +224,8 @@ class GameEngine {
 
         if (skillLock) skillLock.addEventListener('click', () => this.toggleLockSkill());
         if (skillAuto) skillAuto.addEventListener('click', () => this.toggleAutoSkill());
-        if (skillRage) skillRage.addEventListener('click', () => this.triggerRageSkill());
-        if (skillFreeze) skillFreeze.addEventListener('click', () => this.triggerFreezeSkill());
+        if (skillRage) skillRage.addEventListener('click', () => this.toggleRageSkill());
+        if (skillFreeze) skillFreeze.addEventListener('click', () => this.toggleFreezeSkill());
         if (skillLaser) skillLaser.addEventListener('click', () => this.triggerLaserSkill());
 
         // 顶部按钮
@@ -285,27 +285,41 @@ class GameEngine {
         if (el) el.classList.toggle('active', this.isAutoFire);
     }
 
-    triggerRageSkill() {
-        // 无敌破解版：零钻石消耗，无限持续狂暴
-        this.cannon.isRageMode = true;
-        this.cannon.rageTimer = 1800; // 30 秒超级狂暴
+    toggleRageSkill() {
+        // 无敌破解版：狂暴模式开关切换 (开启 / 随时取消)
+        this.cannon.isRageMode = !this.cannon.isRageMode;
         const el = document.getElementById('skill-rage');
         if (el) {
-            el.classList.add('active');
-            setTimeout(() => el.classList.remove('active'), 30000);
+            el.classList.toggle('active', this.cannon.isRageMode);
+        }
+        if (this.cannon.isRageMode) {
+            this.cannon.rageTimer = 99999999; // 常驻持续
+        } else {
+            this.cannon.rageTimer = 0; // 立即取消狂暴
+        }
+    }
+
+    triggerRageSkill() {
+        this.toggleRageSkill();
+    }
+
+    toggleFreezeSkill() {
+        // 无敌破解版：极寒冰封开关切换 (冰封 / 随时解冻取消)
+        this.isFrozen = !this.isFrozen;
+        const el = document.getElementById('skill-freeze');
+        if (el) {
+            el.classList.toggle('active', this.isFrozen);
+        }
+        if (this.isFrozen) {
+            this.freezeTimer = 99999999; // 常驻冰封
+            if (window.soundManager) window.soundManager.playFreeze();
+        } else {
+            this.freezeTimer = 0; // 立即解冻恢复
         }
     }
 
     triggerFreezeSkill() {
-        // 无敌破解版：零钻石消耗，极寒冰封
-        this.isFrozen = true;
-        this.freezeTimer = 600; // 10 秒全场冰封
-        if (window.soundManager) window.soundManager.playFreeze();
-        const el = document.getElementById('skill-freeze');
-        if (el) {
-            el.classList.add('active');
-            setTimeout(() => el.classList.remove('active'), 10000);
-        }
+        this.toggleFreezeSkill();
     }
 
     triggerLaserSkill() {
@@ -553,11 +567,13 @@ class GameEngine {
 
     // 主更新逻辑
     update() {
-        // 冰冻倒计时
-        if (this.isFrozen) {
+        // 冰冻倒计时 (若为特殊鱼触发的倒计时，正常倒数；若为手动常开，则由玩家再次点击取消)
+        if (this.isFrozen && this.freezeTimer > 0 && this.freezeTimer < 90000000) {
             this.freezeTimer--;
             if (this.freezeTimer <= 0) {
                 this.isFrozen = false;
+                const el = document.getElementById('skill-freeze');
+                if (el) el.classList.remove('active');
             }
         }
 
