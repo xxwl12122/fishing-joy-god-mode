@@ -266,8 +266,8 @@ class Fish {
         this.swimSpeed = 0.11 + Math.random() * 0.05;
         this.t = startT || 0;
         const isBoss = !!this.config.isBoss;
-        // BOSS 平缓巡航 45~60 秒，保证玩家充分享受 BOSS 战
-        this.tSpeed = isBoss ? (0.00028 * this.config.speed) : (0.00085 * this.config.speed);
+        // BOSS 平缓巡航 35~45 秒，保证玩家充分享受 BOSS 战
+        this.tSpeed = isBoss ? (0.00035 * this.config.speed) : (0.00085 * this.config.speed);
 
         this.isDead = false;
         this.isDying = false;
@@ -275,21 +275,33 @@ class Fish {
         this.hitFlash = 0;
         this.pufferScale = 1;
 
-        if (this.type === 'golden_dragon' || this.type === 'phantom_dragon') {
-            if (!this.segments) {
-                this.segments = [];
-                for (let i = 0; i < 22; i++) {
-                    this.segments.push({ x: 0, y: 0, angle: 0 });
-                }
-            }
-        } else {
-            this.segments = null;
-        }
-
         if (customCurve) {
             this.curve = customCurve;
         } else {
             this.generateRandomCurve(spawnWidth, spawnHeight);
+        }
+
+        this.updatePosition();
+
+        if (this.type === 'golden_dragon' || this.type === 'phantom_dragon') {
+            if (!this.segments) {
+                this.segments = [];
+                for (let i = 0; i < 22; i++) {
+                    this.segments.push({
+                        x: this.x - Math.cos(this.angle) * (i * 25),
+                        y: this.y - Math.sin(this.angle) * (i * 25),
+                        angle: this.angle
+                    });
+                }
+            } else {
+                for (let i = 0; i < this.segments.length; i++) {
+                    this.segments[i].x = this.x - Math.cos(this.angle) * (i * 25);
+                    this.segments[i].y = this.y - Math.sin(this.angle) * (i * 25);
+                    this.segments[i].angle = this.angle;
+                }
+            }
+        } else {
+            this.segments = null;
         }
 
         // 挂载到 PixiJS fish 图层
@@ -311,18 +323,18 @@ class Fish {
                 this.specialGfx.clear();
             }
         }
-
-        this.updatePosition();
     }
 
     generateRandomCurve(sw, sh) {
+        const isBoss = !!(this.config && this.config.isBoss);
         const fromLeft = Math.random() < 0.5;
+        const offset = isBoss ? 60 : 180;
         const p0 = {
-            x: fromLeft ? -180 : sw + 180,
+            x: fromLeft ? -offset : sw + offset,
             y: 80 + Math.random() * (sh - 220)
         };
         const p3 = {
-            x: fromLeft ? sw + 180 : -180,
+            x: fromLeft ? sw + offset : -offset,
             y: 80 + Math.random() * (sh - 220)
         };
         const p1 = {
@@ -847,9 +859,6 @@ class Fish {
             }
             return Math.hypot(this.x - x, this.y - y) < (this.width * 0.45 + radius);
         }
-        const dist = Math.hypot(this.x - x, this.y - y);
-        return dist < (this.width * 0.48 + radius);
-    }
         const dist = Math.hypot(this.x - x, this.y - y);
         return dist < (this.width * 0.48 + radius);
     }

@@ -549,7 +549,7 @@ canvas#gameCanvas {
 /* ================= BOSS 来袭红色预警栏 ================= */
 .boss-banner {
     position: absolute;
-    top: 15%;
+    top: 28%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0.8);
     background: linear-gradient(90deg, transparent, rgba(183, 28, 28, 0.88), transparent);
