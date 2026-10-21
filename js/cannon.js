@@ -495,7 +495,7 @@ class BulletPool {
 
     release(bullet) {
         if (bullet.view) bullet.view.visible = false;
-        if (this.pool.length < 300) {
+        if (this.pool.length < 500) {
             this.pool.push(bullet);
         }
     }

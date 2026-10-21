@@ -8,7 +8,7 @@ const FISH_CONFIGS = {
     yellow_fish: {
         name: '小黄鱼',
         score: 2,
-        speed: 2.2,
+        speed: 2.85,
         baseHp: 1,
         width: 48,
         height: 32,
@@ -17,7 +17,7 @@ const FISH_CONFIGS = {
     clown_fish: {
         name: '小丑鱼',
         score: 3,
-        speed: 2.0,
+        speed: 2.7,
         baseHp: 2,
         width: 58,
         height: 44,
@@ -26,7 +26,7 @@ const FISH_CONFIGS = {
     blue_tang: {
         name: '蓝唐王鱼',
         score: 4,
-        speed: 2.4,
+        speed: 3.2,
         baseHp: 3,
         width: 62,
         height: 48,
@@ -35,7 +35,7 @@ const FISH_CONFIGS = {
     puffer_fish: {
         name: '刺豚',
         score: 7,
-        speed: 1.6,
+        speed: 2.3,
         baseHp: 5,
         width: 66,
         height: 52,
@@ -44,7 +44,7 @@ const FISH_CONFIGS = {
     jellyfish: {
         name: '条纹神仙鱼',
         score: 10,
-        speed: 1.3,
+        speed: 1.85,
         baseHp: 7,
         width: 78,
         height: 86,
@@ -53,7 +53,7 @@ const FISH_CONFIGS = {
     turtle: {
         name: '千年海龟',
         score: 15,
-        speed: 1.1,
+        speed: 1.7,
         baseHp: 10,
         width: 82,
         height: 98,
@@ -62,7 +62,7 @@ const FISH_CONFIGS = {
     swordfish: {
         name: '尖嘴剑鱼',
         score: 25,
-        speed: 3.1,
+        speed: 4.3,
         baseHp: 16,
         width: 120,
         height: 70,
@@ -71,7 +71,7 @@ const FISH_CONFIGS = {
     manta_ray: {
         name: '魔鬼蝠鲼',
         score: 35,
-        speed: 1.4,
+        speed: 2.1,
         baseHp: 22,
         width: 135,
         height: 110,
@@ -80,7 +80,7 @@ const FISH_CONFIGS = {
     hammerhead: {
         name: '银白狂鲨',
         score: 60,
-        speed: 1.8,
+        speed: 2.5,
         baseHp: 35,
         width: 175,
         height: 95,
@@ -89,7 +89,7 @@ const FISH_CONFIGS = {
     shark: {
         name: '霸王黄金大白鲨',
         score: 100,
-        speed: 1.7,
+        speed: 2.4,
         baseHp: 55,
         width: 210,
         height: 115,
@@ -98,7 +98,7 @@ const FISH_CONFIGS = {
     golden_dragon: {
         name: '远古金龙 (BOSS)',
         score: 300,
-        speed: 1.4,
+        speed: 2.0,
         baseHp: 120,
         width: 280,
         height: 90,
@@ -107,7 +107,7 @@ const FISH_CONFIGS = {
     bomb_fish: {
         name: '烈焰炸弹鱼',
         score: 50,
-        speed: 1.5,
+        speed: 2.3,
         baseHp: 20,
         width: 88,
         height: 72,
@@ -116,7 +116,7 @@ const FISH_CONFIGS = {
     freeze_fish: {
         name: '寒冰海星',
         score: 40,
-        speed: 1.3,
+        speed: 2.0,
         baseHp: 15,
         width: 74,
         height: 68,
@@ -125,7 +125,7 @@ const FISH_CONFIGS = {
     lightning_eel: {
         name: '电光鳗',
         score: 45,
-        speed: 2.1,
+        speed: 3.0,
         baseHp: 18,
         width: 90,
         height: 48,
@@ -179,9 +179,9 @@ const FISH_SPRITE_DEFS = {
 };
 
 class Fish {
-    constructor(type, spawnWidth, spawnHeight, customCurve = null) {
+    constructor(type, spawnWidth, spawnHeight, customCurve = null, startT = 0) {
         this.initPixiDisplay();
-        this.reset(type, spawnWidth, spawnHeight, customCurve);
+        this.reset(type, spawnWidth, spawnHeight, customCurve, startT);
     }
 
     // 初始化 PixiJS WebGL 显示对象
@@ -201,7 +201,7 @@ class Fish {
     }
 
     // 对象池复用重置接口
-    reset(type, spawnWidth, spawnHeight, customCurve = null) {
+    reset(type, spawnWidth, spawnHeight, customCurve = null, startT = 0) {
         this.type = type;
         this.config = FISH_CONFIGS[type] || FISH_CONFIGS.yellow_fish;
         this.def = FISH_SPRITE_DEFS[type] || FISH_SPRITE_DEFS.yellow_fish;
@@ -217,9 +217,9 @@ class Fish {
         this.angle = 0;
         this.phase = Math.random() * Math.PI * 2;
         this.swimTick = Math.floor(Math.random() * 60);
-        this.swimSpeed = 0.08 + Math.random() * 0.04;
-        this.t = 0;
-        this.tSpeed = 0.0006 * this.config.speed;
+        this.swimSpeed = 0.11 + Math.random() * 0.05;
+        this.t = startT || 0;
+        this.tSpeed = 0.00085 * this.config.speed;
 
         this.isDead = false;
         this.isDying = false;
@@ -539,18 +539,18 @@ class FishPool {
         this.pool = [];
     }
 
-    get(type, spawnWidth, spawnHeight, customCurve = null) {
+    get(type, spawnWidth, spawnHeight, customCurve = null, startT = 0) {
         if (this.pool.length > 0) {
             const fish = this.pool.pop();
-            fish.reset(type, spawnWidth, spawnHeight, customCurve);
+            fish.reset(type, spawnWidth, spawnHeight, customCurve, startT);
             return fish;
         }
-        return new Fish(type, spawnWidth, spawnHeight, customCurve);
+        return new Fish(type, spawnWidth, spawnHeight, customCurve, startT);
     }
 
     release(fish) {
         if (fish.view) fish.view.visible = false;
-        if (this.pool.length < 250) {
+        if (this.pool.length < 500) {
             this.pool.push(fish);
         }
     }

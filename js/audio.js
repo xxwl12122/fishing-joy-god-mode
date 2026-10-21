@@ -353,6 +353,10 @@ class SoundManager {
         }
     }
 
+    playBossWarning() {
+        this.playBossAlert();
+    }
+
     // 自动循环悠扬的海底环境合成 BGM
     startBgm() {
         if (this.isBgmPlaying) return;

@@ -126,11 +126,18 @@ class GameEngine {
     }
 
     initInitialFishes() {
-        // 满屏 100 条狂野鱼海初始生成
-        this.spawnSchool('yellow_fish', 15);
-        this.spawnSchool('clown_fish', 12);
-        for (let i = 0; i < 20; i++) {
-            this.spawnRandomFish();
+        // 开局即爆发 120+ 条超狂暴鱼海，全屏纵深分布
+        this.spawnSchool('yellow_fish', 26, 0.2);
+        this.spawnSchool('clown_fish', 22, 0.4);
+        this.spawnSchool('blue_tang', 18, 0.6);
+        this.spawnSchool('puffer_fish', 14, 0.3);
+        for (let i = 0; i < 40; i++) {
+            const f = this.spawnRandomFish();
+            if (f) {
+                f.t = 0.05 + Math.random() * 0.8;
+                f.updatePosition();
+                f.syncPixiTransform();
+            }
         }
     }
 
@@ -350,6 +357,10 @@ class GameEngine {
         window.uiManager.updateLaser(100);
     }
 
+    fireLaser() {
+        return this.triggerLaserSkill();
+    }
+
     toggleMute() {
         if (window.soundManager) {
             const isMuted = window.soundManager.toggleMute();
@@ -366,13 +377,13 @@ class GameEngine {
         }
     }
 
-    spawnFish(type, customCurve = null) {
+    spawnFish(type, customCurve = null, startT = 0) {
         if (window.fishPool) {
-            const fish = window.fishPool.get(type, this.width, this.height, customCurve);
+            const fish = window.fishPool.get(type, this.width, this.height, customCurve, startT);
             this.fishes.push(fish);
             return fish;
         }
-        const fish = new window.Fish(type, this.width, this.height, customCurve);
+        const fish = new window.Fish(type, this.width, this.height, customCurve, startT);
         this.fishes.push(fish);
         return fish;
     }
@@ -391,29 +402,29 @@ class GameEngine {
         if (Math.random() < 0.15) {
             const specials = ['bomb_fish', 'freeze_fish', 'lightning_eel'];
             const specialType = specials[Math.floor(Math.random() * specials.length)];
-            this.spawnFish(specialType);
-            return;
+            return this.spawnFish(specialType);
         }
 
         const type = types[Math.floor(Math.random() * types.length)];
-        this.spawnFish(type);
+        return this.spawnFish(type);
     }
 
-    spawnSchool(type, count = 10) {
+    spawnSchool(type, count = 12, startT = 0) {
         const fromLeft = Math.random() < 0.5;
-        const startY = 100 + Math.random() * (this.height - 250);
-        const endY = 100 + Math.random() * (this.height - 250);
+        const startY = 80 + Math.random() * (this.height - 220);
+        const endY = 80 + Math.random() * (this.height - 220);
 
         for (let i = 0; i < count; i++) {
-            const offsetX = (Math.random() - 0.5) * 120 - (fromLeft ? i * 40 : -i * 40);
-            const offsetY = (Math.random() - 0.5) * 80;
+            // 优化紧密队列，让鱼群更快、更密集地游入屏幕
+            const offsetX = (Math.random() - 0.5) * 80 - (fromLeft ? i * 26 : -i * 26);
+            const offsetY = (Math.random() - 0.5) * 60;
 
-            const p0 = { x: fromLeft ? -200 + offsetX : this.width + 200 + offsetX, y: startY + offsetY };
-            const p3 = { x: fromLeft ? this.width + 200 + offsetX : -200 + offsetX, y: endY + offsetY };
-            const p1 = { x: this.width * 0.35, y: startY + (Math.random() - 0.5) * 200 };
-            const p2 = { x: this.width * 0.65, y: endY + (Math.random() - 0.5) * 200 };
+            const p0 = { x: fromLeft ? -120 + offsetX : this.width + 120 + offsetX, y: startY + offsetY };
+            const p3 = { x: fromLeft ? this.width + 120 + offsetX : -120 + offsetX, y: endY + offsetY };
+            const p1 = { x: this.width * 0.35, y: startY + (Math.random() - 0.5) * 180 };
+            const p2 = { x: this.width * 0.65, y: endY + (Math.random() - 0.5) * 180 };
 
-            this.spawnFish(type, { p0, p1, p2, p3 });
+            this.spawnFish(type, { p0, p1, p2, p3 }, startT);
         }
     }
 
@@ -428,7 +439,10 @@ class GameEngine {
             }
         }
 
-        if (window.soundManager) window.soundManager.playBossWarning();
+        if (window.soundManager) {
+            if (typeof window.soundManager.playBossAlert === 'function') window.soundManager.playBossAlert();
+            else if (typeof window.soundManager.playBossWarning === 'function') window.soundManager.playBossWarning();
+        }
         if (window.uiManager) window.uiManager.showBossBanner();
         if (window.particleSystem) window.particleSystem.shake(25, 45);
 
@@ -692,18 +706,26 @@ class GameEngine {
             }
 
             if (collided) {
+                if (window.bulletPool) {
+                    window.bulletPool.release(b);
+                }
                 this.bullets.splice(i, 1);
             }
         }
 
-        // 鱼群波次刷新 (支持 100 条狂野鱼海满频生成)
+        // 鱼群波次刷新 (支持 180 条超狂暴鱼海极速满频生成)
         this.spawnTick++;
-        if (this.spawnTick % 18 === 0 && this.fishes.length < 100) {
+        if (this.spawnTick % 6 === 0 && this.fishes.length < 180) {
             this.spawnRandomFish();
         }
-        if (this.spawnTick % 140 === 0 && this.fishes.length < 88) {
-            const schoolCount = 10 + Math.floor(Math.random() * 6);
-            this.spawnSchool(['yellow_fish', 'clown_fish', 'blue_tang'][Math.floor(Math.random() * 3)], schoolCount);
+        if (this.spawnTick % 55 === 0 && this.fishes.length < 165) {
+            const schoolCount = 14 + Math.floor(Math.random() * 10);
+            const schoolType = ['yellow_fish', 'clown_fish', 'blue_tang', 'puffer_fish'][Math.floor(Math.random() * 4)];
+            this.spawnSchool(schoolType, schoolCount);
+        }
+        // 应急补鱼机制：若大招或全屏炸弹清屏导致鱼数低于 90，快速补充鱼海
+        if (this.fishes.length < 90 && this.spawnTick % 12 === 0) {
+            this.spawnSchool(['yellow_fish', 'clown_fish', 'blue_tang'][Math.floor(Math.random() * 3)], 12);
         }
 
         // BOSS 刷新
@@ -797,6 +819,7 @@ class GameEngine {
 
 window.addEventListener('DOMContentLoaded', () => {
     window.gameEngine = new GameEngine();
+    window.game = window.gameEngine;
 
     const initAudioTrigger = () => {
         if (window.soundManager) {
