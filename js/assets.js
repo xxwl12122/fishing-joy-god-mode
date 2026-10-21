@@ -46,7 +46,22 @@
         coinAni2: 'images/coinAni2.png',
 
         bg: 'assets/bg.jpg',
-        cannon: 'assets/cannon.png'
+        cannon: 'assets/cannon.png',
+
+        bossDragon: 'images/boss_dragon.png',
+        bossDragonBody: 'images/boss_dragon_body.png',
+        bossDragonClaw: 'images/boss_dragon_claw.png',
+        bossDragonTail: 'images/boss_dragon_tail.png',
+        bossDragonPearl: 'images/boss_dragon_pearl.png',
+
+        bossPhantom: 'images/boss_phantom_dragon.png',
+        bossPhantomBody: 'images/boss_phantom_body.png',
+        bossPhantomClaw: 'images/boss_phantom_claw.png',
+        bossPhantomTail: 'images/boss_phantom_tail.png',
+        bossPhantomPearl: 'images/boss_phantom_pearl.png',
+
+        bossMechaShark: 'images/boss_mecha_shark.png',
+        bossKraken: 'images/boss_kraken.png'
     };
 
     class AssetManager {
@@ -209,6 +224,24 @@
             if (cannonImg) {
                 window.pixiTextures.cannonTexture = PIXI.Texture.from(cannonImg);
             }
+
+            // 9. 四大史诗级 BOSS 高精 WebGL 贴图与神龙 3D 骨肉系统
+            window.pixiTextures.bosses = {
+                dragon: this.get('bossDragon') ? PIXI.Texture.from(this.get('bossDragon')) : null,
+                dragonBody: this.get('bossDragonBody') ? PIXI.Texture.from(this.get('bossDragonBody')) : null,
+                dragonClaw: this.get('bossDragonClaw') ? PIXI.Texture.from(this.get('bossDragonClaw')) : null,
+                dragonTail: this.get('bossDragonTail') ? PIXI.Texture.from(this.get('bossDragonTail')) : null,
+                dragonPearl: this.get('bossDragonPearl') ? PIXI.Texture.from(this.get('bossDragonPearl')) : null,
+
+                phantom: this.get('bossPhantom') ? PIXI.Texture.from(this.get('bossPhantom')) : null,
+                phantomBody: this.get('bossPhantomBody') ? PIXI.Texture.from(this.get('bossPhantomBody')) : null,
+                phantomClaw: this.get('bossPhantomClaw') ? PIXI.Texture.from(this.get('bossPhantomClaw')) : null,
+                phantomTail: this.get('bossPhantomTail') ? PIXI.Texture.from(this.get('bossPhantomTail')) : null,
+                phantomPearl: this.get('bossPhantomPearl') ? PIXI.Texture.from(this.get('bossPhantomPearl')) : null,
+
+                mechaShark: this.get('bossMechaShark') ? PIXI.Texture.from(this.get('bossMechaShark')) : null,
+                kraken: this.get('bossKraken') ? PIXI.Texture.from(this.get('bossKraken')) : null
+            };
         }
     }
 

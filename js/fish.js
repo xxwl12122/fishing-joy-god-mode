@@ -209,17 +209,25 @@ const FISH_SPRITE_DEFS = {
         asset: 'fish6', w: 105, h: 79, swimFrames: 8, capFrames: 4, scale: 1.0, regX: 52, regY: 39, baseAngle: 0, special: 'lightning'
     },
     golden_dragon: {
+        asset: 'bossDragon',
+        w: 1000, h: 1000, regX: 500, regY: 500, scale: 0.16,
         special: 'dragon',
         theme: 'gold'
     },
     phantom_dragon: {
+        asset: 'bossPhantom',
+        w: 1000, h: 1000, regX: 500, regY: 500, scale: 0.16,
         special: 'dragon',
         theme: 'phantom'
     },
     kraken: {
+        asset: 'bossKraken',
+        w: 1260, h: 620, regX: 630, regY: 310, scale: 0.22,
         special: 'kraken'
     },
     mecha_shark: {
+        asset: 'bossMechaShark',
+        w: 1240, h: 590, regX: 620, regY: 295, scale: 0.22,
         special: 'mecha_shark'
     }
 };
@@ -235,15 +243,61 @@ class Fish {
         if (typeof PIXI === 'undefined') return;
         this.view = new PIXI.Container();
 
+        // BOSS 底层特效 (如机械巨鲨尾部等离子火箭喷焰、深海巨妖魔瘴暗雾)
+        this.bossBackGfx = new PIXI.Graphics();
+        this.view.addChild(this.bossBackGfx);
+
         this.sprite = new PIXI.Sprite();
         this.sprite.anchor.set(0.5, 0.5);
         this.view.addChild(this.sprite);
 
+        // BOSS 顶层特效 (如机械巨鲨红外激光战术扫描视锥、深海巨妖摄魂金瞳神芒)
+        this.bossForeGfx = new PIXI.Graphics();
+        this.view.addChild(this.bossForeGfx);
+
         this.specialGfx = new PIXI.Graphics();
         this.view.addChild(this.specialGfx);
 
+        // 神龙 3D 骨肉系统专属容器 (多图层分级：尾羽 -> 24节龙躯鳞甲 -> 4爪 -> 灵气 -> 龙首 -> 龙珠)
+        this.dragonContainer = new PIXI.Container();
+        this.dragonContainer.visible = false;
+        this.view.addChild(this.dragonContainer);
+
+        // 1. 龙尾精灵 (底层尾鳍)
+        this.dragonTailSprite = new PIXI.Sprite();
+        this.dragonTailSprite.anchor.set(0.82, 0.5);
+        this.dragonContainer.addChild(this.dragonTailSprite);
+
+        // 2. 4 只飞腾龙爪 (位于身体下方，使肩胛关节自然隐藏于龙躯后)
+        this.dragonClawSprites = [];
+        for (let i = 0; i < 4; i++) {
+            const clawSpr = new PIXI.Sprite();
+            clawSpr.anchor.set(0.15, 0.25);
+            this.dragonContainer.addChild(clawSpr);
+            this.dragonClawSprites.push(clawSpr);
+        }
+
+        // 3. 龙躯 24 节 3D 鳞甲关节池 (自下而上覆盖龙爪根部)
+        this.dragonBodySprites = [];
+        for (let i = 0; i < 24; i++) {
+            const segSpr = new PIXI.Sprite();
+            segSpr.anchor.set(0.5, 0.5);
+            this.dragonContainer.addChild(segSpr);
+            this.dragonBodySprites.push(segSpr);
+        }
+
         this.dragonGfx = new PIXI.Graphics();
-        this.view.addChild(this.dragonGfx);
+        this.dragonContainer.addChild(this.dragonGfx);
+
+        this.dragonHeadSprite = new PIXI.Sprite();
+        this.dragonHeadSprite.anchor.set(0.28, 0.5);
+        this.dragonHeadSprite.visible = false;
+        this.dragonContainer.addChild(this.dragonHeadSprite);
+
+        this.dragonPearlSprite = new PIXI.Sprite();
+        this.dragonPearlSprite.anchor.set(0.5, 0.5);
+        this.dragonPearlSprite.visible = false;
+        this.dragonContainer.addChild(this.dragonPearlSprite);
     }
 
     // 对象池复用重置接口
@@ -286,17 +340,17 @@ class Fish {
         if (this.type === 'golden_dragon' || this.type === 'phantom_dragon') {
             if (!this.segments) {
                 this.segments = [];
-                for (let i = 0; i < 22; i++) {
+                for (let i = 0; i < 24; i++) {
                     this.segments.push({
-                        x: this.x - Math.cos(this.angle) * (i * 25),
-                        y: this.y - Math.sin(this.angle) * (i * 25),
+                        x: this.x - Math.cos(this.angle) * (i * 20),
+                        y: this.y - Math.sin(this.angle) * (i * 20),
                         angle: this.angle
                     });
                 }
             } else {
                 for (let i = 0; i < this.segments.length; i++) {
-                    this.segments[i].x = this.x - Math.cos(this.angle) * (i * 25);
-                    this.segments[i].y = this.y - Math.sin(this.angle) * (i * 25);
+                    this.segments[i].x = this.x - Math.cos(this.angle) * (i * 20);
+                    this.segments[i].y = this.y - Math.sin(this.angle) * (i * 20);
                     this.segments[i].angle = this.angle;
                 }
             }
@@ -319,8 +373,17 @@ class Fish {
                 this.dragonGfx.visible = isBoss;
                 this.dragonGfx.clear();
             }
+            if (this.bossBackGfx) {
+                this.bossBackGfx.clear();
+            }
+            if (this.bossForeGfx) {
+                this.bossForeGfx.clear();
+            }
             if (this.specialGfx) {
                 this.specialGfx.clear();
+            }
+            if (this.dragonHeadSprite) {
+                this.dragonHeadSprite.visible = false;
             }
         }
     }
@@ -375,15 +438,15 @@ class Fish {
             this.segments[0].y = this.y;
             this.segments[0].angle = this.angle;
 
-            const segDist = 25;
+            const segDist = 20;
             for (let i = 1; i < this.segments.length; i++) {
                 const prev = this.segments[i - 1];
                 const curr = this.segments[i];
-                const dx = curr.x - prev.x;
-                const dy = curr.y - prev.y;
+                const dx = prev.x - curr.x;
+                const dy = prev.y - curr.y;
                 curr.angle = Math.atan2(dy, dx);
-                curr.x = prev.x + Math.cos(curr.angle) * segDist;
-                curr.y = prev.y + Math.sin(curr.angle) * segDist;
+                curr.x = prev.x - Math.cos(curr.angle) * segDist;
+                curr.y = prev.y - Math.sin(curr.angle) * segDist;
             }
         }
     }
@@ -524,313 +587,339 @@ class Fish {
         }
     }
 
-    // PixiJS WebGL 神龙分节多动力学渲染 (支持远古金龙与九幽魔煞幽冥骨龙)
+    // PixiJS WebGL 史诗级神龙 3D 骨肉动力学渲染 (支持远古五爪金龙与九幽魔煞幽冥骨龙)
     renderPixiDragon(theme = 'gold') {
-        if (!this.segments || !this.dragonGfx) return;
-        const gfx = this.dragonGfx;
-        gfx.clear();
-
+        if (!this.segments || !this.view) return;
         const isPhantom = theme === 'phantom';
         const isFlashing = this.hitFlash > 0;
-        const mainColor = isFlashing ? 0xffffff : (isPhantom ? 0x00e5ff : 0xffd700);
-        const darkColor = isFlashing ? 0x80d8ff : (isPhantom ? 0x005cb2 : 0xff8f00);
-        const spineColor = isFlashing ? 0xffffff : (isPhantom ? 0x76ff03 : 0xff1744);
+        const bTex = window.pixiTextures && window.pixiTextures.bosses;
+        if (!bTex) return;
 
-        // 1. 龙身多关节与鳞片渲染 (从龙尾到龙颈)
-        for (let i = this.segments.length - 1; i >= 0; i--) {
-            const seg = this.segments[i];
-            const size = 35 - i * 0.95;
-            const relX = seg.x - this.x;
-            const relY = seg.y - this.y;
+        if (this.sprite) this.sprite.visible = false;
+        if (this.dragonContainer) this.dragonContainer.visible = true;
+        if (this.bossBackGfx) this.bossBackGfx.clear();
+        if (this.bossForeGfx) this.bossForeGfx.clear();
 
-            // 龙背祥瑞火焰/幽魂骨鳍
-            const spineAng = seg.angle + Math.PI / 2;
-            const spineLen = size * 1.5;
-            gfx.beginFill(spineColor, 0.85);
-            gfx.drawPolygon([
-                relX - Math.cos(seg.angle) * (size * 0.5), relY - Math.sin(seg.angle) * (size * 0.5),
-                relX + Math.cos(spineAng) * spineLen, relY + Math.sin(spineAng) * spineLen,
-                relX + Math.cos(seg.angle) * (size * 0.5), relY + Math.sin(seg.angle) * (size * 0.5)
-            ]);
-            gfx.endFill();
+        const textures = isPhantom ? {
+            head: bTex.phantom,
+            body: bTex.phantomBody,
+            claw: bTex.phantomClaw,
+            tail: bTex.phantomTail,
+            pearl: bTex.phantomPearl
+        } : {
+            head: bTex.dragon,
+            body: bTex.dragonBody,
+            claw: bTex.dragonClaw,
+            tail: bTex.dragonTail,
+            pearl: bTex.dragonPearl
+        };
 
-            // 龙爪 (分布于第 5、12 节)
-            if (i === 5 || i === 12) {
-                const clawAng1 = seg.angle + Math.PI * 0.6;
-                const clawAng2 = seg.angle - Math.PI * 0.6;
-                const cLen = size * 1.8;
-                gfx.lineStyle(4, darkColor, 0.9);
-                gfx.moveTo(relX, relY);
-                gfx.lineTo(relX + Math.cos(clawAng1) * cLen, relY + Math.sin(clawAng1) * cLen);
-                gfx.moveTo(relX, relY);
-                gfx.lineTo(relX + Math.cos(clawAng2) * cLen, relY + Math.sin(clawAng2) * cLen);
-            }
-
-            // 龙身外层祥云/幽骨光环
-            gfx.beginFill(darkColor, 0.9);
-            gfx.drawCircle(relX, relY, size * 0.95);
-            gfx.endFill();
-
-            // 龙身主体黄金球/幽蓝晶球
-            gfx.beginFill(mainColor, 0.98);
-            gfx.drawCircle(relX, relY, size * 0.68);
-            gfx.endFill();
-
-            // 龙鳞高光
-            gfx.beginFill(0xffffff, 0.85);
-            gfx.drawCircle(relX - size * 0.2, relY - size * 0.2, size * 0.25);
-            gfx.endFill();
+        const segCount = this.segments.length;
+        const pts = [];
+        for (let i = 0; i < segCount; i++) {
+            const s = this.segments[i];
+            pts.push({
+                x: s.x - this.x,
+                y: s.y - this.y,
+                angle: s.angle
+            });
         }
 
-        // 2. 龙头装配 (严格沿 this.angle 旋转)
-        const cosA = Math.cos(this.angle);
-        const sinA = Math.sin(this.angle);
-        const rot = (px, py) => ({
-            x: px * cosA - py * sinA,
-            y: px * sinA + py * cosA
-        });
+        const tint = isFlashing ? 0xff2244 : 0xffffff;
+        const alpha = this.isDying ? Math.max(0, 1 - this.deathProgress * 0.8) : 1;
 
-        // 龙角 (鹿角分叉造型)
-        gfx.lineStyle(4.5, isFlashing ? 0xffffff : (isPhantom ? 0x00e5ff : 0xffea00), 1);
-        const h1 = rot(-10, -22), h2 = rot(-36, -52), h3 = rot(-24, -68), h4 = rot(-46, -60);
-        gfx.moveTo(h1.x, h1.y); gfx.lineTo(h2.x, h2.y); gfx.lineTo(h3.x, h3.y);
-        gfx.moveTo(h2.x, h2.y); gfx.lineTo(h4.x, h4.y);
+        // 1. 飘逸 3D 凤羽龙尾 / 幽冥骨刃尾鳍 (Attached to segments[segCount - 1])
+        if (this.dragonTailSprite && textures.tail) {
+            const tailPt = pts[segCount - 1];
+            const tailPre = pts[segCount - 2] || tailPt;
+            const tAngle = Math.atan2(tailPt.y - tailPre.y, tailPt.x - tailPre.x);
+            const tailWave = Math.sin(this.swimTick * 0.22) * 0.18;
 
-        const h1b = rot(-10, 22), h2b = rot(-36, 52), h3b = rot(-24, 68), h4b = rot(-46, 60);
-        gfx.moveTo(h1b.x, h1b.y); gfx.lineTo(h2b.x, h2b.y); gfx.lineTo(h3b.x, h3b.y);
-        gfx.moveTo(h2b.x, h2b.y); gfx.lineTo(h4b.x, h4b.y);
+            this.dragonTailSprite.visible = true;
+            this.dragonTailSprite.texture = textures.tail;
+            this.dragonTailSprite.x = tailPt.x;
+            this.dragonTailSprite.y = tailPt.y;
+            this.dragonTailSprite.rotation = tAngle + tailWave;
+            this.dragonTailSprite.scale.set(0.92, 0.92);
+            this.dragonTailSprite.tint = tint;
+            this.dragonTailSprite.alpha = alpha;
+        }
 
-        // 头部主轮廓
-        const headPoints = [
-            rot(45, 0),
-            rot(30, -22),
-            rot(-5, -28),
-            rot(-32, -18),
-            rot(-32, 18),
-            rot(-5, 28),
-            rot(30, 22)
-        ];
-        gfx.beginFill(mainColor, 1);
-        gfx.drawPolygon(headPoints.flatMap(p => [p.x, p.y]));
-        gfx.endFill();
+        // 2. 真实 3D 龙躯鳞甲关节 (24 节 3D 鳞甲骨肉，由尾至首分层叠盖)
+        if (this.dragonBodySprites && textures.body) {
+            for (let i = segCount - 1; i >= 1; i--) {
+                const spr = this.dragonBodySprites[i];
+                if (!spr) continue;
+                const p = pts[i];
+                const prog = i / segCount;
+                const baseScale = (1.05 * (1 - prog * 0.52));
+                const breath = 1 + Math.sin(this.swimTick * 0.18 - i * 0.35) * 0.04;
+                const s = baseScale * breath;
 
-        // 龙吻与下颌
-        const snout = rot(28, 0);
-        gfx.beginFill(darkColor, 1);
-        gfx.drawCircle(snout.x, snout.y, 14);
-        gfx.endFill();
+                spr.visible = true;
+                spr.texture = textures.body;
+                spr.x = p.x;
+                spr.y = p.y;
+                spr.rotation = p.angle;
+                spr.scale.set(s, s);
+                spr.tint = tint;
+                spr.alpha = alpha;
+            }
+        }
 
-        // 威严赤红/幽蓝魔眼
-        const eyeColor = isPhantom ? 0x00e5ff : 0xff1744;
-        const eye1 = rot(10, -15);
-        const eye2 = rot(10, 15);
-        gfx.beginFill(eyeColor, 1);
-        gfx.drawCircle(eye1.x, eye1.y, 6.5);
-        gfx.drawCircle(eye2.x, eye2.y, 6.5);
-        gfx.endFill();
-        gfx.beginFill(0xffffff, 1);
-        gfx.drawCircle(eye1.x + cosA * 2, eye1.y + sinA * 2, 2.2);
-        gfx.drawCircle(eye2.x + cosA * 2, eye2.y + sinA * 2, 2.2);
-        gfx.endFill();
+        // 3. 真实 3D 霸气五爪龙足 (前肢在 segment 4, 后肢在 segment 14，左右划水动效)
+        if (this.dragonClawSprites && textures.claw) {
+            const limbConfigs = [
+                { idx: 4, side: -1, clawIndex: 0 },
+                { idx: 4, side: 1, clawIndex: 1 },
+                { idx: 14, side: -1, clawIndex: 2 },
+                { idx: 14, side: 1, clawIndex: 3 }
+            ];
 
-        // 飘逸灵动龙须 (随游动水流柔美起伏)
-        const whiskerWave1 = Math.sin(this.swimTick * 0.12) * 14;
-        const whiskerWave2 = Math.cos(this.swimTick * 0.12) * 14;
-        gfx.lineStyle(2.5, isPhantom ? 0x00e5ff : 0xffea00, 0.95);
-        const wBase1 = rot(38, -8);
-        const wMid1 = rot(70, -24 + whiskerWave1);
-        const wTip1 = rot(110, -32 + whiskerWave2);
-        gfx.moveTo(wBase1.x, wBase1.y);
-        gfx.bezierCurveTo(wMid1.x, wMid1.y, wMid1.x, wMid1.y, wTip1.x, wTip1.y);
+            for (const cfg of limbConfigs) {
+                const spr = this.dragonClawSprites[cfg.clawIndex];
+                if (!spr || cfg.idx >= segCount) continue;
+                const p = pts[cfg.idx];
+                const nx = -Math.sin(p.angle);
+                const ny = Math.cos(p.angle);
+                const stroke = Math.sin(this.swimTick * 0.18 + cfg.idx * 0.6 + cfg.side * 1.5) * 0.32;
 
-        const wBase2 = rot(38, 8);
-        const wMid2 = rot(70, 24 - whiskerWave1);
-        const wTip2 = rot(110, 32 - whiskerWave2);
-        gfx.moveTo(wBase2.x, wBase2.y);
-        gfx.bezierCurveTo(wMid2.x, wMid2.y, wMid2.x, wMid2.y, wTip2.x, wTip2.y);
+                const prog = cfg.idx / segCount;
+                const clawScale = (0.72 * (1 - prog * 0.42));
+                const lateralDist = 34 * (1 - prog * 0.3);
 
-        // 祥瑞吞吐龙珠 / 幽冥魂核
-        const pearlPulse = Math.sin(this.swimTick * 0.14) * 6;
-        const pearlPos = rot(72 + pearlPulse, 0);
+                spr.visible = true;
+                spr.texture = textures.claw;
+                spr.x = p.x + nx * (cfg.side * lateralDist);
+                spr.y = p.y + ny * (cfg.side * lateralDist);
+                spr.rotation = p.angle + (cfg.side < 0 ? -0.45 : 0.45) + stroke;
+                spr.scale.set(clawScale, cfg.side < 0 ? -clawScale : clawScale);
+                spr.tint = tint;
+                spr.alpha = alpha;
+            }
+        }
 
-        gfx.beginFill(isPhantom ? 0x00e5ff : 0xffea00, 0.45);
-        gfx.drawCircle(pearlPos.x, pearlPos.y, 22 + Math.abs(pearlPulse));
-        gfx.endFill();
+        // 4. WebGL 加速神圣光辉与灵气粒子 (Dragon Divine Aura in dragonGfx)
+        const gfx = this.dragonGfx;
+        if (gfx) {
+            gfx.clear();
+            gfx.alpha = alpha;
+            const auraColor = isFlashing ? 0xffffff : (isPhantom ? 0x00e5ff : 0xffd54f);
+            gfx.lineStyle(8, auraColor, 0.28);
+            gfx.moveTo(pts[1].x, pts[1].y);
+            for (let i = 2; i < segCount; i++) {
+                gfx.lineTo(pts[i].x, pts[i].y);
+            }
+        }
 
-        gfx.beginFill(0xffffff, 1);
-        gfx.drawCircle(pearlPos.x, pearlPos.y, 13);
-        gfx.endFill();
+        // 5. 霸气龙首贴图 (Head Sprite at segment 0)
+        if (this.dragonHeadSprite && textures.head) {
+            const headPt = pts[0];
+            this.dragonHeadSprite.visible = true;
+            this.dragonHeadSprite.texture = textures.head;
+            this.dragonHeadSprite.x = headPt.x;
+            this.dragonHeadSprite.y = headPt.y;
+            this.dragonHeadSprite.rotation = headPt.angle;
 
-        gfx.lineStyle(2, isPhantom ? 0x76ff03 : 0x00e5ff, 0.9);
-        gfx.drawCircle(pearlPos.x, pearlPos.y, 16);
+            const targetHeadW = 210;
+            const headScale = targetHeadW / (textures.head.width || 800);
+            const headPulse = 1 + Math.sin(this.swimTick * 0.15) * 0.03;
+            this.dragonHeadSprite.scale.set(headScale * headPulse, headScale * headPulse);
+            this.dragonHeadSprite.tint = tint;
+            this.dragonHeadSprite.alpha = alpha;
+        }
+
+        // 6. 真实 3D 炽盛神龙宝珠 (Celestial Pearl / Nether Core ahead of head)
+        if (this.dragonPearlSprite && textures.pearl) {
+            const headPt = pts[0];
+            const pearlDist = 138;
+            const pearlBob = Math.sin(this.swimTick * 0.14) * 16;
+            const pearlX = headPt.x + Math.cos(headPt.angle) * pearlDist - Math.sin(headPt.angle) * pearlBob;
+            const pearlY = headPt.y + Math.sin(headPt.angle) * pearlDist + Math.cos(headPt.angle) * pearlBob;
+
+            this.dragonPearlSprite.visible = true;
+            this.dragonPearlSprite.texture = textures.pearl;
+            this.dragonPearlSprite.x = pearlX;
+            this.dragonPearlSprite.y = pearlY;
+            this.dragonPearlSprite.rotation = this.swimTick * 0.05;
+
+            const pulse = 1 + Math.sin(this.swimTick * 0.2) * 0.06;
+            this.dragonPearlSprite.scale.set(0.75 * pulse, 0.75 * pulse);
+            this.dragonPearlSprite.tint = tint;
+            this.dragonPearlSprite.alpha = alpha;
+        }
     }
 
-    // PixiJS WebGL 深海巨妖克拉肯专属渲染 (八触手狂舞 + 摄魂巨眼)
+    // PixiJS WebGL 深海巨妖克拉肯专属渲染 (八荒狂触 + 摄魂巨眼 + 远古深渊头冠)
     renderPixiKraken() {
-        if (!this.dragonGfx) return;
-        const gfx = this.dragonGfx;
-        gfx.clear();
+        if (!this.view) return;
+        if (this.dragonContainer) this.dragonContainer.visible = false;
+        if (this.dragonHeadSprite) this.dragonHeadSprite.visible = false;
+
+        const backGfx = this.bossBackGfx;
+        const foreGfx = this.bossForeGfx;
+        if (backGfx) backGfx.clear();
+        if (foreGfx) foreGfx.clear();
 
         const isFlashing = this.hitFlash > 0;
-        const bodyColor = isFlashing ? 0xffffff : 0x311b92;
-        const rimColor = isFlashing ? 0x80d8ff : 0x7c4dff;
-        const glowColor = isFlashing ? 0xffea00 : 0xff1744;
+        const facingLeft = Math.cos(this.angle) < 0;
+        const alpha = this.isDying ? Math.max(0, 1 - this.deathProgress * 0.8) : 1;
 
-        const cosA = Math.cos(this.angle);
-        const sinA = Math.sin(this.angle);
-        const rot = (px, py) => ({
-            x: px * cosA - py * sinA,
-            y: px * sinA + py * cosA
-        });
+        // 设置精灵贴图
+        if (this.sprite && window.pixiTextures && window.pixiTextures.bosses && window.pixiTextures.bosses.kraken) {
+            this.sprite.visible = true;
+            this.sprite.texture = window.pixiTextures.bosses.kraken;
 
-        // 1. 八条巨型深渊触手狂卷
-        for (let t = 0; t < 8; t++) {
-            const spread = (t - 3.5) * 0.24;
-            const waveSpeed = this.swimTick * 0.14 + t * 0.75;
-            const tLen = 220;
-            const segmentsCount = 12;
+            // 原始图片呈现宽度 460px 巨型深渊章鱼
+            const targetWidth = 460;
+            const baseScale = targetWidth / (this.sprite.texture.width || 1260);
 
-            gfx.lineStyle(16 - t * 0.6, isFlashing ? 0xffffff : 0x512da8, 0.95);
-            let prevX = rot(-30, (t - 3.5) * 14).x;
-            let prevY = rot(-30, (t - 3.5) * 14).y;
-            gfx.moveTo(prevX, prevY);
+            // 头足类专属喷射式呼吸韵律：头冠收缩扩张 + 触手延展
+            const pulse = Math.sin(this.swimTick * 0.11);
+            const scaleX = baseScale * (1 + pulse * 0.05);
+            const scaleY = (facingLeft ? -baseScale : baseScale) * (1 - pulse * 0.04);
 
-            for (let s = 1; s <= segmentsCount; s++) {
-                const prog = s / segmentsCount;
-                const waveAmp = Math.sin(waveSpeed + s * 0.6) * (32 * prog);
-                const localX = -30 - prog * tLen;
-                const localY = (t - 3.5) * 16 + spread * (prog * 65) + waveAmp;
-                const p = rot(localX, localY);
-                gfx.lineTo(p.x, p.y);
-
-                // 发光发亮深海吸盘
-                if (s % 3 === 0) {
-                    gfx.beginFill(glowColor, 0.9);
-                    gfx.drawCircle(p.x, p.y, Math.max(2.5, 6.5 - s * 0.35));
-                    gfx.endFill();
-                }
-            }
+            this.sprite.scale.set(scaleX, scaleY);
+            this.sprite.tint = isFlashing ? 0xff2244 : 0xffffff;
+            this.sprite.alpha = alpha;
         }
 
-        // 2. 巨型深渊章鱼头冠 (Mantle)
-        gfx.beginFill(bodyColor, 0.96);
-        gfx.lineStyle(4, rimColor, 1);
-        const hPoints = [
-            rot(65, 0),
-            rot(50, -48),
-            rot(0, -68),
-            rot(-60, -52),
-            rot(-80, 0),
-            rot(-60, 52),
-            rot(0, 68),
-            rot(50, 48)
-        ];
-        gfx.drawPolygon(hPoints.flatMap(p => [p.x, p.y]));
-        gfx.endFill();
+        this.view.rotation = this.angle;
 
-        // 头顶深渊符文发光脉冲
-        const mantlePulse = (Math.sin(this.swimTick * 0.1) + 1) * 0.5;
-        gfx.beginFill(glowColor, 0.4 + mantlePulse * 0.4);
-        const coreP = rot(-15, 0);
-        gfx.drawCircle(coreP.x, coreP.y, 28 + mantlePulse * 8);
-        gfx.endFill();
+        if (backGfx) {
+            backGfx.alpha = alpha;
+            // 1. 深渊魔瘴与暗影墨雾光环 (Abyssal Ink Aura) - 位于底层
+            const inkPulse = (Math.sin(this.swimTick * 0.09) + 1) * 0.5;
+            backGfx.beginFill(0x1a0033, 0.35 + inkPulse * 0.15);
+            backGfx.drawEllipse(30, 0, 160 + inkPulse * 20, 110 + inkPulse * 15);
+            backGfx.endFill();
 
-        // 3. 猩红金色摄魂巨眼
-        const eye1 = rot(28, -30);
-        const eye2 = rot(28, 30);
-        gfx.beginFill(0xffd700, 1);
-        gfx.drawCircle(eye1.x, eye1.y, 14);
-        gfx.drawCircle(eye2.x, eye2.y, 14);
-        gfx.endFill();
+            // 2. 远古深渊发光符文阵波动 (Pulsing Bioluminescent Rune Corona)
+            backGfx.lineStyle(2.5, 0xe040fb, 0.45 + inkPulse * 0.45);
+            backGfx.drawEllipse(45, 0, 95 + inkPulse * 12, 65 + inkPulse * 8);
 
-        // 垂直瞳孔
-        gfx.lineStyle(4, 0x000000, 1);
-        gfx.moveTo(eye1.x - sinA * 10, eye1.y + cosA * 10);
-        gfx.lineTo(eye1.x + sinA * 10, eye1.y - cosA * 10);
-        gfx.moveTo(eye2.x - sinA * 10, eye2.y + cosA * 10);
-        gfx.lineTo(eye2.x + sinA * 10, eye2.y - cosA * 10);
+            backGfx.lineStyle(2, 0x00e5ff, 0.6 + inkPulse * 0.35);
+            backGfx.drawEllipse(55, 0, 60, 42);
+        }
+
+        if (foreGfx) {
+            foreGfx.alpha = alpha;
+            const inkPulse = (Math.sin(this.swimTick * 0.09) + 1) * 0.5;
+            // 3. 巨妖摄魂金瞳高能神芒 (Predator Eye Flare) - 位于顶层
+            const eyeX = 42;
+            const eyeY = facingLeft ? 45 : -45;
+            foreGfx.beginFill(0xffd700, 0.5 + inkPulse * 0.4);
+            foreGfx.drawCircle(eyeX, eyeY, 14 + inkPulse * 6);
+            foreGfx.endFill();
+            foreGfx.beginFill(0xffffff, 0.95);
+            foreGfx.drawCircle(eyeX, eyeY, 4.5);
+            foreGfx.endFill();
+        }
     }
 
-    // PixiJS WebGL 机械泰坦终结巨鲨渲染 (赛博装甲 + 核聚变反应堆 + 推进喷焰)
+    // PixiJS WebGL 机械泰坦终结巨鲨渲染 (重装赛博装甲 + 背部电磁轨道炮 + 核反应堆 + 等离子火箭推进)
     renderPixiMechaShark() {
-        if (!this.dragonGfx) return;
-        const gfx = this.dragonGfx;
-        gfx.clear();
+        if (!this.view) return;
+        if (this.dragonContainer) this.dragonContainer.visible = false;
+        if (this.dragonHeadSprite) this.dragonHeadSprite.visible = false;
+
+        const backGfx = this.bossBackGfx;
+        const foreGfx = this.bossForeGfx;
+        if (backGfx) backGfx.clear();
+        if (foreGfx) foreGfx.clear();
 
         const isFlashing = this.hitFlash > 0;
-        const armorDark = isFlashing ? 0xffffff : 0x102027;
-        const armorMid = isFlashing ? 0x80d8ff : 0x263238;
-        const neonCyan = isFlashing ? 0xffffff : 0x00e5ff;
-        const laserRed = 0xff1744;
+        const facingLeft = Math.cos(this.angle) < 0;
+        const alpha = this.isDying ? Math.max(0, 1 - this.deathProgress * 0.8) : 1;
 
-        const cosA = Math.cos(this.angle);
-        const sinA = Math.sin(this.angle);
-        const rot = (px, py) => ({
-            x: px * cosA - py * sinA,
-            y: px * sinA + py * cosA
-        });
+        // 设置精灵贴图
+        if (this.sprite && window.pixiTextures && window.pixiTextures.bosses && window.pixiTextures.bosses.mechaShark) {
+            this.sprite.visible = true;
+            this.sprite.texture = window.pixiTextures.bosses.mechaShark;
 
-        // 1. 尾部等离子火箭推进喷焰
-        const exhaustPulse = (Math.sin(this.swimTick * 0.3) + 1) * 0.5;
-        const flameLen = 65 + exhaustPulse * 30;
-        const t1 = rot(-140, -18), t2 = rot(-140, 18), tTip = rot(-140 - flameLen, 0);
-        gfx.beginFill(neonCyan, 0.7);
-        gfx.drawPolygon([t1.x, t1.y, tTip.x, tTip.y, t2.x, t2.y]);
-        gfx.endFill();
+            // 原始图片呈现长 490px 霸气巨鲨
+            const targetWidth = 490;
+            const baseScale = targetWidth / (this.sprite.texture.width || 1240);
 
-        gfx.beginFill(0xffffff, 0.95);
-        const tInner = rot(-140 - flameLen * 0.55, 0);
-        gfx.drawPolygon([rot(-140, -8).x, rot(-140, -8).y, tInner.x, tInner.y, rot(-140, 8).x, rot(-140, 8).y]);
-        gfx.endFill();
+            // 掠食者游动微幅呼吸与背鳍波浪摆动
+            const swimPulse = 1 + Math.sin(this.swimTick * 0.14) * 0.025;
+            const scaleX = baseScale * swimPulse;
+            const scaleY = (facingLeft ? -baseScale : baseScale) * (2 - swimPulse);
 
-        // 2. 机械尾翼与机械背鳍 (Razor Fin)
-        gfx.beginFill(armorMid, 1);
-        gfx.lineStyle(3, neonCyan, 0.9);
-        const finP = [rot(-20, 0), rot(-45, -75), rot(-75, -60), rot(-55, 0)];
-        gfx.drawPolygon(finP.flatMap(p => [p.x, p.y]));
-        gfx.endFill();
+            this.sprite.scale.set(scaleX, scaleY);
+            this.sprite.tint = isFlashing ? 0xff2244 : 0xffffff;
+            this.sprite.alpha = alpha;
+        }
 
-        // 3. 钛合金装甲巨鲨主躯干
-        const bodyPoints = [
-            rot(130, 0),       // 尖锐钢牙鼻锥
-            rot(90, -32),      // 上吻装甲
-            rot(20, -52),      // 背部装甲
-            rot(-70, -42),     // 后背装甲
-            rot(-135, -20),    // 尾部推进器左
-            rot(-135, 20),     // 尾部推进器右
-            rot(-70, 42),      // 腹底后部
-            rot(20, 52),       // 腹底装甲
-            rot(90, 32)        // 下颌装甲
-        ];
-        gfx.beginFill(armorDark, 1);
-        gfx.lineStyle(3.5, neonCyan, 0.95);
-        gfx.drawPolygon(bodyPoints.flatMap(p => [p.x, p.y]));
-        gfx.endFill();
+        // 巨鲨旋转朝向与微幅体态倾斜 (Predatory Banking)
+        const bankAngle = Math.sin(this.swimTick * 0.12) * 0.04;
+        this.view.rotation = this.angle + (facingLeft ? -bankAngle : bankAngle);
 
-        // 4. 机侧能量导流槽与核聚变发光反应堆
-        gfx.lineStyle(3, neonCyan, 1);
-        const line1A = rot(60, -16), line1B = rot(-40, -16);
-        gfx.moveTo(line1A.x, line1A.y); gfx.lineTo(line1B.x, line1B.y);
-        const line2A = rot(60, 16), line2B = rot(-40, 16);
-        gfx.moveTo(line2A.x, line2A.y); gfx.lineTo(line2B.x, line2B.y);
+        if (backGfx) {
+            backGfx.alpha = alpha;
+            // 1. 等离子火箭尾焰动态渲染 (Cyan / Blue Ion Thruster Exhaust) - 位于底层
+            const exhaustPulse = (Math.sin(this.swimTick * 0.35) + 1) * 0.5;
+            const flameLen = 65 + exhaustPulse * 45;
+            const flameThick = 18 + exhaustPulse * 6;
+            const tailX = -190;
+            const tailY = 0;
 
-        // 反应堆发光核心
-        const corePos = rot(5, 0);
-        const coreBreath = (Math.sin(this.swimTick * 0.15) + 1) * 0.5;
-        gfx.beginFill(neonCyan, 0.85);
-        gfx.drawCircle(corePos.x, corePos.y, 16 + coreBreath * 4);
-        gfx.endFill();
-        gfx.beginFill(0xffffff, 1);
-        gfx.drawCircle(corePos.x, corePos.y, 8);
-        gfx.endFill();
+            // 外层等离子光晕
+            backGfx.beginFill(0x00e5ff, 0.45);
+            backGfx.drawPolygon([
+                tailX, tailY - flameThick * 1.5,
+                tailX - flameLen * 1.25, tailY,
+                tailX, tailY + flameThick * 1.5
+            ]);
+            backGfx.endFill();
 
-        // 5. 机械红外战术光镜 (Cyber Eye)
-        const eyePos1 = rot(85, -20);
-        const eyePos2 = rot(85, 20);
-        gfx.beginFill(laserRed, 1);
-        gfx.drawRect(eyePos1.x - 4, eyePos1.y - 2, 8, 4);
-        gfx.drawRect(eyePos2.x - 4, eyePos2.y - 2, 8, 4);
-        gfx.endFill();
+            // 核心高亮青蓝喷焰
+            backGfx.beginFill(0x2979ff, 0.85);
+            backGfx.drawPolygon([
+                tailX, tailY - flameThick,
+                tailX - flameLen, tailY,
+                tailX, tailY + flameThick
+            ]);
+            backGfx.endFill();
+
+            // 马赫环炽白核心 (Shock Diamond)
+            backGfx.beginFill(0xffffff, 0.95);
+            backGfx.drawPolygon([
+                tailX, tailY - 6,
+                tailX - flameLen * 0.45, tailY,
+                tailX, tailY + 6
+            ]);
+            backGfx.endFill();
+        }
+
+        if (foreGfx) {
+            foreGfx.alpha = alpha;
+            // 2. 掠食者全息红外扫描视锥 (Crimson Laser Visor Sweeping Cone) - 位于顶层
+            const scanAngle = Math.sin(this.swimTick * 0.08) * 0.22;
+            const scanDist = 180;
+            const eyeX = 175;
+            const eyeY = facingLeft ? 14 : -14;
+
+            foreGfx.lineStyle(1.8, 0xff1744, 0.85);
+            foreGfx.moveTo(eyeX, eyeY);
+            foreGfx.lineTo(eyeX + Math.cos(scanAngle - 0.25) * scanDist, eyeY + Math.sin(scanAngle - 0.25) * scanDist);
+            foreGfx.moveTo(eyeX, eyeY);
+            foreGfx.lineTo(eyeX + Math.cos(scanAngle + 0.25) * scanDist, eyeY + Math.sin(scanAngle + 0.25) * scanDist);
+
+            // 扫描视锥半透明填充
+            foreGfx.beginFill(0xff1744, 0.12 + Math.abs(scanAngle) * 0.08);
+            foreGfx.drawPolygon([
+                eyeX, eyeY,
+                eyeX + Math.cos(scanAngle - 0.25) * scanDist, eyeY + Math.sin(scanAngle - 0.25) * scanDist,
+                eyeX + Math.cos(scanAngle + 0.25) * scanDist, eyeY + Math.sin(scanAngle + 0.25) * scanDist
+            ]);
+            foreGfx.endFill();
+
+            // 3. 聚变反应堆与能量槽微弱呼吸光环
+            const auraPulse = (Math.sin(this.swimTick * 0.2) + 1) * 0.5;
+            foreGfx.lineStyle(2, 0x00e5ff, 0.35 + auraPulse * 0.4);
+            foreGfx.drawCircle(-25, 0, 32 + auraPulse * 8);
+        }
     }
 
     takeHit(damage = 1) {
