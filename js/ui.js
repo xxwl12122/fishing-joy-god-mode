@@ -214,29 +214,12 @@ class UIManager {
 
             // 构造虚拟鱼进行静态渲染
             const dummy = new window.Fish(key, canvas.width, canvas.height);
+            if (dummy.view) dummy.view.visible = false;
             dummy.x = canvas.width / 2;
             dummy.y = canvas.height / 2;
             dummy.angle = 0;
 
-            if (dummy.segments) {
-                for (let i = 0; i < dummy.segments.length; i++) {
-                    dummy.segments[i].x = dummy.x - i * 11;
-                    dummy.segments[i].y = dummy.y;
-                    dummy.segments[i].angle = 0;
-                }
-            }
-
-            // 稍微缩小金龙以适应卡片预览
-            if (key === 'golden_dragon') {
-                ctx.save();
-                ctx.translate(canvas.width / 2 + 35, canvas.height / 2);
-                ctx.scale(0.55, 0.55);
-                ctx.translate(-canvas.width / 2, -canvas.height / 2);
-                dummy.render(ctx);
-                ctx.restore();
-            } else {
-                dummy.render(ctx);
-            }
+            dummy.renderStatic2D(ctx);
         }
     }
 }

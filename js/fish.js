@@ -1,7 +1,7 @@
 /**
- * 捕鱼达人 - 官方街机正版鱼类精灵渲染系统与生态逻辑
- * 搭载全部 10 种经典鱼类 + 银鲨 + 金鲨的官方 Sprite Sheets 真实游动骨骼与濒死挣扎动画，
- * 配合远古金龙 BOSS 黄金神龙分节多动力学骨骼与三大特异功能鱼超凡粒子光效
+ * 捕鱼达人 - PixiJS (WebGL) 硬件加速鱼类渲染系统与生态逻辑
+ * 搭载全部 12 款正版鱼类 GPU 批量合批精灵 (Sprite / WebGL)，
+ * 保留原有平滑三次贝塞尔游动动力学与碰撞检测，性能满帧 60FPS
  */
 
 const FISH_CONFIGS = {
@@ -133,7 +133,6 @@ const FISH_CONFIGS = {
     }
 };
 
-// 官方正版精灵图动画元数据
 const FISH_SPRITE_DEFS = {
     yellow_fish: {
         asset: 'fish1', w: 55, h: 37, swimFrames: 4, capFrames: 4, scale: 1.15, regX: 28, regY: 18, baseAngle: 0
@@ -181,13 +180,31 @@ const FISH_SPRITE_DEFS = {
 
 class Fish {
     constructor(type, spawnWidth, spawnHeight, customCurve = null) {
+        this.initPixiDisplay();
         this.reset(type, spawnWidth, spawnHeight, customCurve);
+    }
+
+    // 初始化 PixiJS WebGL 显示对象
+    initPixiDisplay() {
+        if (typeof PIXI === 'undefined') return;
+        this.view = new PIXI.Container();
+
+        this.sprite = new PIXI.Sprite();
+        this.sprite.anchor.set(0.5, 0.5);
+        this.view.addChild(this.sprite);
+
+        this.specialGfx = new PIXI.Graphics();
+        this.view.addChild(this.specialGfx);
+
+        this.dragonGfx = new PIXI.Graphics();
+        this.view.addChild(this.dragonGfx);
     }
 
     // 对象池复用重置接口
     reset(type, spawnWidth, spawnHeight, customCurve = null) {
         this.type = type;
         this.config = FISH_CONFIGS[type] || FISH_CONFIGS.yellow_fish;
+        this.def = FISH_SPRITE_DEFS[type] || FISH_SPRITE_DEFS.yellow_fish;
         this.name = this.config.name;
         this.score = this.config.score;
         this.hp = this.config.baseHp;
@@ -199,7 +216,7 @@ class Fish {
         this.y = 0;
         this.angle = 0;
         this.phase = Math.random() * Math.PI * 2;
-        this.swimTick = Math.floor(Math.random() * 60); // 游动帧计数器
+        this.swimTick = Math.floor(Math.random() * 60);
         this.swimSpeed = 0.08 + Math.random() * 0.04;
         this.t = 0;
         this.tSpeed = 0.0006 * this.config.speed;
@@ -227,10 +244,29 @@ class Fish {
             this.generateRandomCurve(spawnWidth, spawnHeight);
         }
 
+        // 挂载到 PixiJS fish 图层
+        if (this.view) {
+            if (window.pixiLayers && window.pixiLayers.fish && this.view.parent !== window.pixiLayers.fish) {
+                window.pixiLayers.fish.addChild(this.view);
+            }
+            this.view.visible = true;
+            this.view.alpha = 1;
+            if (this.sprite) {
+                this.sprite.visible = this.def.special !== 'dragon';
+                this.sprite.tint = 0xffffff;
+            }
+            if (this.dragonGfx) {
+                this.dragonGfx.visible = this.def.special === 'dragon';
+                this.dragonGfx.clear();
+            }
+            if (this.specialGfx) {
+                this.specialGfx.clear();
+            }
+        }
+
         this.updatePosition();
     }
 
-    // 生成平滑的三次贝塞尔游动路径
     generateRandomCurve(sw, sh) {
         const fromLeft = Math.random() < 0.5;
         const p0 = {
@@ -274,7 +310,6 @@ class Fish {
         this.y = p.y;
         this.angle = Math.atan2(nextP.y - p.y, nextP.x - p.x);
 
-        // 金龙身体分节跟随动力学
         if (this.type === 'golden_dragon' && this.segments) {
             this.segments[0].x = this.x;
             this.segments[0].y = this.y;
@@ -296,17 +331,22 @@ class Fish {
     update(isFrozen = false) {
         if (this.isDead) return;
 
-        // 死亡濒死动画 (捕获挣扎帧播放 + 金光散逸)
         if (this.isDying) {
             this.deathProgress += 0.038;
             this.swimTick += 2;
             if (this.deathProgress >= 1) {
                 this.isDead = true;
+                if (this.view) this.view.visible = false;
+            } else {
+                this.syncPixiTransform();
             }
             return;
         }
 
-        if (isFrozen) return;
+        if (isFrozen) {
+            this.syncPixiTransform();
+            return;
+        }
 
         this.swimTick++;
         this.phase += this.swimSpeed;
@@ -319,10 +359,142 @@ class Fish {
 
         if (this.t >= 1) {
             this.isDead = true;
+            if (this.view) this.view.visible = false;
             return;
         }
 
         this.updatePosition();
+        this.syncPixiTransform();
+    }
+
+    // 将物理位置与动作实时同步到 PixiJS WebGL 容器
+    syncPixiTransform() {
+        if (!this.view) return;
+
+        this.view.x = this.x;
+        this.view.y = this.y;
+
+        if (this.def.special === 'dragon') {
+            this.renderPixiDragon();
+            return;
+        }
+
+        const facingLeft = Math.cos(this.angle) < 0;
+        let rot = this.angle;
+        if (this.def.baseAngle) rot += this.def.baseAngle;
+        this.view.rotation = rot;
+
+        // 翻转与缩放
+        const scaleX = this.def.scale * this.pufferScale;
+        const scaleY = (facingLeft ? -this.def.scale : this.def.scale) * this.pufferScale;
+
+        // 受击变色与濒死渐隐
+        if (this.hitFlash > 0) {
+            this.sprite.tint = 0xff2244;
+        } else if (this.isDying) {
+            this.sprite.tint = 0xffd700;
+            this.view.alpha = Math.max(0, 1 - this.deathProgress * 0.8);
+            this.sprite.scale.set(scaleX * (1 - this.deathProgress * 0.3), scaleY * (1 - this.deathProgress * 0.3));
+        } else {
+            this.sprite.tint = 0xffffff;
+            this.view.alpha = 1;
+            this.sprite.scale.set(scaleX, scaleY);
+        }
+
+        // WebGL 贴图帧切换
+        const texData = window.pixiTextures && window.pixiTextures.fish ? window.pixiTextures.fish[this.type] : null;
+        if (texData) {
+            if (this.isDying && texData.capture && texData.capture.length > 0) {
+                const capIdx = Math.floor((this.deathProgress * 12) % texData.capture.length);
+                this.sprite.texture = texData.capture[capIdx];
+            } else if (texData.swim && texData.swim.length > 0) {
+                const swimIdx = Math.floor(this.swimTick / 6) % texData.swim.length;
+                this.sprite.texture = texData.swim[swimIdx];
+            }
+        }
+
+        // 特异功能鱼 WebGL 光环渲染
+        if (this.def.special && this.specialGfx) {
+            this.renderPixiSpecialAura(this.def.special);
+        }
+    }
+
+    renderPixiSpecialAura(specialType) {
+        const gfx = this.specialGfx;
+        gfx.clear();
+
+        if (specialType === 'bomb') {
+            const pulse = (Math.sin(this.swimTick * 0.15) + 1) * 0.5;
+            gfx.lineStyle(3, 0xff3d00, 0.85);
+            gfx.drawCircle(0, 0, 36 + pulse * 6);
+        } else if (specialType === 'freeze') {
+            const rot = this.swimTick * 0.03;
+            gfx.rotation = rot;
+            gfx.lineStyle(2.5, 0x00e5ff, 0.9);
+            gfx.drawCircle(0, 0, 32);
+        } else if (specialType === 'lightning') {
+            const arcTime = this.swimTick * 0.2;
+            gfx.lineStyle(2.5, 0x76ff03, 0.9);
+            gfx.arc(0, 0, 30, arcTime, arcTime + Math.PI * 0.7);
+        }
+    }
+
+    // PixiJS WebGL 远古金龙东方神龙分节多动力学渲染
+    renderPixiDragon() {
+        if (!this.segments || !this.dragonGfx) return;
+        const gfx = this.dragonGfx;
+        gfx.clear();
+
+        // 龙身关节连线与关节球
+        for (let i = this.segments.length - 1; i >= 0; i--) {
+            const seg = this.segments[i];
+            const size = 28 - i * 1.2;
+            const relX = seg.x - this.x;
+            const relY = seg.y - this.y;
+
+            gfx.beginFill(0xffa000, 0.9);
+            gfx.drawCircle(relX, relY, size * 0.9);
+            gfx.endFill();
+
+            gfx.beginFill(0xffd700, 0.95);
+            gfx.drawCircle(relX, relY, size * 0.6);
+            gfx.endFill();
+
+            // 龙鳍
+            gfx.beginFill(0xff3d00, 0.8);
+            gfx.drawPolygon([
+                relX, relY - size * 0.8,
+                relX - size * 0.6, relY - size * 1.5,
+                relX + size * 0.6, relY - size * 0.8
+            ]);
+            gfx.endFill();
+        }
+
+        // 龙头
+        gfx.beginFill(0xffd700, 1);
+        gfx.drawEllipse(0, 0, 38, 26);
+        gfx.endFill();
+
+        // 龙角
+        gfx.lineStyle(4, 0xffea00, 1);
+        gfx.moveTo(-5, -18);
+        gfx.lineTo(-24, -42);
+        gfx.lineTo(-14, -55);
+        gfx.moveTo(-5, 18);
+        gfx.lineTo(-24, 42);
+        gfx.lineTo(-14, 55);
+
+        // 龙眼
+        gfx.beginFill(0xff1744, 1);
+        gfx.drawCircle(18, -10, 5);
+        gfx.drawCircle(18, 10, 5);
+        gfx.endFill();
+
+        // 龙珠
+        const pearlPulse = Math.sin(this.swimTick * 0.1) * 4;
+        gfx.beginFill(0xffffff, 1);
+        gfx.drawCircle(48 + pearlPulse, 0, 13);
+        gfx.endFill();
     }
 
     takeHit(damage = 1) {
@@ -344,270 +516,19 @@ class Fish {
         return dist < (this.width * 0.48 + radius);
     }
 
-    render(ctx) {
-        if (this.isDead) return;
-
-        const def = FISH_SPRITE_DEFS[this.type] || FISH_SPRITE_DEFS.yellow_fish;
-
-        // 金龙特殊独立渲染
-        if (def.special === 'dragon') {
-            this.renderGoldenDragon(ctx);
-            return;
-        }
-
+    // 鱼类图鉴 2D 静态渲染兼容接口
+    renderStatic2D(ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);
-
-        // 依据游动方向翻转 (向左游动时反转 Y 轴，保持鱼腹朝下)
-        const facingLeft = Math.cos(this.angle) < 0;
-        ctx.rotate(this.angle);
-        if (facingLeft) {
-            ctx.scale(1, -1);
-        }
-
-        // 修正特定生物（如海龟）的头部默认初始基准角
-        if (def.baseAngle) {
-            ctx.rotate(def.baseAngle);
-        }
-
-        // 刺豚受击膨胀动力学
-        if (this.pufferScale > 1) {
-            ctx.scale(this.pufferScale, this.pufferScale);
-        }
-
-        // 受击闪白红光滤镜
-        if (this.hitFlash > 0) {
-            ctx.filter = 'brightness(2.2) drop-shadow(0 0 12px #ff1744)';
-        }
-
-        // 濒死效果 (渐显金光收缩)
-        if (this.isDying) {
-            const scale = Math.max(0.1, 1 - this.deathProgress * 0.4);
-            ctx.scale(scale, scale);
-            ctx.globalAlpha = Math.max(0, 1 - this.deathProgress * 0.8);
-            ctx.shadowColor = '#ffd700';
-            ctx.shadowBlur = 20;
-        }
-
-        // 渲染官方正版 Sprite Sheet 贴图
-        const img = window.gameAssets ? window.gameAssets.get(def.asset) : null;
+        const img = window.gameAssets ? window.gameAssets.get(this.def.asset) : null;
         if (img) {
-            let frame = 0;
-            if (this.isDying) {
-                // 播放濒死捕获挣扎帧 (最后 4 帧)
-                const capIdx = Math.floor((this.deathProgress * 12) % def.capFrames);
-                frame = def.swimFrames + capIdx;
-            } else {
-                // 播放平滑游动尾鳍摆动帧
-                frame = Math.floor(this.swimTick / 6) % def.swimFrames;
-            }
-
-            const sy = frame * def.h;
-            const drawW = def.w * def.scale;
-            const drawH = def.h * def.scale;
-            const drawX = -def.regX * def.scale;
-            const drawY = -def.regY * def.scale;
-
-            ctx.drawImage(img, 0, sy, def.w, def.h, drawX, drawY, drawW, drawH);
+            ctx.drawImage(img, 0, 0, this.def.w, this.def.h, -this.def.regX * this.def.scale, -this.def.regY * this.def.scale, this.def.w * this.def.scale, this.def.h * this.def.scale);
         } else {
-            // 备用极简回退
-            this.renderFallbackFish(ctx, def);
-        }
-
-        // 渲染特异功能鱼光环 (炸弹、寒冰、电光)
-        if (def.special) {
-            this.renderSpecialAura(ctx, def.special);
-        }
-
-        ctx.restore();
-    }
-
-    // 渲染特异功能鱼炫酷光环
-    renderSpecialAura(ctx, specialType) {
-        if (specialType === 'bomb') {
-            // 烈焰炸弹鱼：岩浆红炎波动与预警光环
-            const pulse = (Math.sin(this.swimTick * 0.15) + 1) * 0.5;
-            ctx.save();
-            ctx.strokeStyle = '#ff3d00';
-            ctx.lineWidth = 3;
-            ctx.shadowColor = '#ff1744';
-            ctx.shadowBlur = 18 + pulse * 12;
+            ctx.fillStyle = '#ffd700';
             ctx.beginPath();
-            ctx.arc(0, 0, 36 + pulse * 6, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // 炸药警告标
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 15px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('💣', 0, -32);
-            ctx.restore();
-        } else if (specialType === 'freeze') {
-            // 寒冰海星：极寒六芒冰晶阵
-            const rot = this.swimTick * 0.03;
-            ctx.save();
-            ctx.rotate(rot);
-            ctx.strokeStyle = '#00e5ff';
-            ctx.lineWidth = 2.5;
-            ctx.shadowColor = '#00e5ff';
-            ctx.shadowBlur = 15;
-            ctx.beginPath();
-            ctx.arc(0, 0, 32, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('❄️', 0, 0);
-            ctx.restore();
-        } else if (specialType === 'lightning') {
-            // 电光鳗：高压电弧环绕
-            ctx.save();
-            ctx.strokeStyle = '#76ff03';
-            ctx.lineWidth = 2.5;
-            ctx.shadowColor = '#76ff03';
-            ctx.shadowBlur = 16;
-            ctx.beginPath();
-            const arcTime = this.swimTick * 0.2;
-            ctx.arc(0, 0, 30, arcTime, arcTime + Math.PI * 0.7);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(0, 0, 30, arcTime + Math.PI, arcTime + Math.PI * 1.7);
-            ctx.stroke();
-            ctx.restore();
-        }
-    }
-
-    // 备用极简回退
-    renderFallbackFish(ctx, def) {
-        ctx.fillStyle = '#ffd700';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 24, 14, 0, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    // 远古金龙 (BOSS) 东方神龙多节动力学渲染
-    renderGoldenDragon(ctx) {
-        if (!this.segments) return;
-
-        // 1. 渲染龙身各节 (从龙尾到龙颈)
-        for (let i = this.segments.length - 1; i >= 0; i--) {
-            const seg = this.segments[i];
-            const size = 30 - i * 1.3;
-            const progress = i / this.segments.length;
-
-            ctx.save();
-            ctx.translate(seg.x, seg.y);
-            ctx.rotate(seg.angle);
-
-            // 龙鳞渐变体色
-            const segGrad = ctx.createRadialGradient(0, 0, 3, 0, 0, size);
-            segGrad.addColorStop(0, '#fff59d');
-            segGrad.addColorStop(0.5, '#ffd700');
-            segGrad.addColorStop(0.85, '#ff8f00');
-            segGrad.addColorStop(1, '#e65100');
-
-            ctx.fillStyle = segGrad;
-            ctx.shadowColor = '#ffd700';
-            ctx.shadowBlur = 15;
-
-            // 龙身关节椭圆
-            ctx.beginPath();
-            ctx.ellipse(0, 0, size * 1.1, size * 0.85, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, 24, 14, 0, 0, Math.PI * 2);
             ctx.fill();
-
-            // 黄金背鳍
-            ctx.fillStyle = '#ff6d00';
-            ctx.beginPath();
-            ctx.moveTo(0, -size * 0.85);
-            ctx.lineTo(-size * 0.5, -size * 1.6);
-            ctx.lineTo(size * 0.5, -size * 0.85);
-            ctx.closePath();
-            ctx.fill();
-
-            // 龙尾神圣凤尾鳍
-            if (i === this.segments.length - 1) {
-                ctx.fillStyle = '#ff3d00';
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(40, -30);
-                ctx.lineTo(25, 0);
-                ctx.lineTo(40, 30);
-                ctx.closePath();
-                ctx.fill();
-            }
-
-            ctx.restore();
         }
-
-        // 2. 渲染霸气神龙头部与龙角龙须
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
-
-        if (this.hitFlash > 0) {
-            ctx.filter = 'brightness(2.2) drop-shadow(0 0 20px #ff1744)';
-        }
-
-        // 龙头底色
-        const headGrad = ctx.createRadialGradient(5, 0, 5, 0, 0, 38);
-        headGrad.addColorStop(0, '#ffffff');
-        headGrad.addColorStop(0.4, '#ffd700');
-        headGrad.addColorStop(0.8, '#ff9100');
-        headGrad.addColorStop(1, '#d50000');
-        ctx.fillStyle = headGrad;
-        ctx.shadowColor = '#ffd700';
-        ctx.shadowBlur = 25;
-
-        ctx.beginPath();
-        ctx.ellipse(5, 0, 38, 26, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 龙角 (鹿角形态)
-        ctx.strokeStyle = '#ffd700';
-        ctx.lineWidth = 4.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(-5, -18);
-        ctx.lineTo(-24, -42);
-        ctx.lineTo(-14, -55);
-        ctx.moveTo(-16, -35);
-        ctx.lineTo(-30, -45);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(-5, 18);
-        ctx.lineTo(-24, 42);
-        ctx.lineTo(-14, 55);
-        ctx.moveTo(-16, 35);
-        ctx.lineTo(-30, 45);
-        ctx.stroke();
-
-        // 龙眼 (赤红神圣耀斑)
-        ctx.fillStyle = '#ff1744';
-        ctx.shadowColor = '#ff1744';
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.arc(18, -11, 5, 0, Math.PI * 2);
-        ctx.arc(18, 11, 5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 龙珠 (龙头前悬浮旋转的神圣龙珠)
-        const pearlX = 48;
-        const pearlPulse = Math.sin(this.swimTick * 0.1) * 4;
-        const pearlGrad = ctx.createRadialGradient(pearlX, 0, 2, pearlX, 0, 16);
-        pearlGrad.addColorStop(0, '#ffffff');
-        pearlGrad.addColorStop(0.45, '#ffd700');
-        pearlGrad.addColorStop(1, '#ff6d00');
-        ctx.fillStyle = pearlGrad;
-        ctx.shadowColor = '#ffd700';
-        ctx.shadowBlur = 22;
-        ctx.beginPath();
-        ctx.arc(pearlX + pearlPulse, 0, 13, 0, Math.PI * 2);
-        ctx.fill();
-
         ctx.restore();
     }
 }
@@ -628,6 +549,7 @@ class FishPool {
     }
 
     release(fish) {
+        if (fish.view) fish.view.visible = false;
         if (this.pool.length < 250) {
             this.pool.push(fish);
         }
@@ -636,4 +558,5 @@ class FishPool {
 
 window.fishPool = new FishPool();
 window.FISH_CONFIGS = FISH_CONFIGS;
+window.FISH_SPRITE_DEFS = FISH_SPRITE_DEFS;
 window.Fish = Fish;
