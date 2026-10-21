@@ -11,6 +11,9 @@ class UIManager {
         this.cannonCostEl = document.getElementById('cannon-cost');
         this.laserFillEl = document.getElementById('laser-fill');
         this.bossBannerEl = document.getElementById('boss-banner');
+        this.bossHpContainerEl = document.getElementById('boss-hp-container');
+        this.bossHpFillEl = document.getElementById('boss-hp-fill');
+        this.bossHpTextEl = document.getElementById('boss-hp-text');
         this.bigWinOverlayEl = document.getElementById('big-win-overlay');
         this.bigWinCoinsEl = document.getElementById('big-win-coins');
         this.comboContainerEl = document.getElementById('combo-container');
@@ -122,6 +125,29 @@ class UIManager {
         setTimeout(() => {
             this.bossBannerEl.classList.remove('show');
         }, 4500);
+        this.showBossHp(120);
+    }
+
+    showBossHp(maxHp = 120) {
+        if (!this.bossHpContainerEl) return;
+        this.bossHpContainerEl.classList.add('show');
+        this.updateBossHp(maxHp, maxHp);
+    }
+
+    updateBossHp(hp, maxHp = 120) {
+        if (!this.bossHpFillEl || !this.bossHpTextEl) return;
+        const pct = Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100)));
+        this.bossHpFillEl.style.width = `${pct}%`;
+        this.bossHpTextEl.innerText = `${pct}% (${Math.max(0, hp)}/${maxHp})`;
+        if (pct <= 0) {
+            setTimeout(() => this.hideBossHp(), 1000);
+        }
+    }
+
+    hideBossHp() {
+        if (this.bossHpContainerEl) {
+            this.bossHpContainerEl.classList.remove('show');
+        }
     }
 
     showBigWin(score) {

@@ -312,6 +312,13 @@ class Cannon {
             bullets.push(getB(muzzleX, muzzleY, this.angle - 0.08));
             bullets.push(getB(muzzleX, muzzleY, this.angle));
             bullets.push(getB(muzzleX, muzzleY, this.angle + 0.08));
+        } else if (cfg.level >= 10 || this.isRageMode) {
+            // Lv.10 灭世龙神神圣歼灭炮 / 极速狂暴模式：五联强力扇形弹幕！
+            bullets.push(getB(muzzleX, muzzleY, this.angle - 0.18));
+            bullets.push(getB(muzzleX, muzzleY, this.angle - 0.09));
+            bullets.push(getB(muzzleX, muzzleY, this.angle));
+            bullets.push(getB(muzzleX, muzzleY, this.angle + 0.09));
+            bullets.push(getB(muzzleX, muzzleY, this.angle + 0.18));
         } else {
             bullets.push(getB(muzzleX, muzzleY, this.angle - 0.12));
             bullets.push(getB(muzzleX, muzzleY, this.angle - 0.04));

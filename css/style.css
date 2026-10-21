@@ -386,6 +386,83 @@ canvas#gameCanvas {
     transition: width 0.2s ease-out;
 }
 
+/* ================= 远古金龙 BOSS 专属史诗全屏血条 ================= */
+.boss-hp-container {
+    position: absolute;
+    top: 75px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    width: 460px;
+    background: rgba(10, 20, 35, 0.9);
+    border: 2px solid #ffd700;
+    border-radius: 20px;
+    padding: 8px 18px 10px;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6), inset 0 0 15px rgba(255, 61, 0, 0.3);
+    backdrop-filter: blur(8px);
+    z-index: 15;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.boss-hp-container.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.boss-hp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.boss-hp-icon {
+    font-size: 22px;
+    animation: dragonIconSway 1s infinite alternate ease-in-out;
+}
+
+@keyframes dragonIconSway {
+    0% { transform: scale(1) rotate(-5deg); }
+    100% { transform: scale(1.15) rotate(5deg); }
+}
+
+.boss-hp-name {
+    font-size: 15px;
+    font-weight: 900;
+    color: #ffe082;
+    text-shadow: 0 0 10px #ff9800;
+    letter-spacing: 2px;
+}
+
+.boss-hp-text {
+    font-size: 14px;
+    font-weight: 800;
+    color: #ff5252;
+    text-shadow: 0 0 8px rgba(255, 23, 68, 0.8);
+}
+
+.boss-hp-track {
+    width: 100%;
+    height: 14px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 7px;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    overflow: hidden;
+    position: relative;
+}
+
+.boss-hp-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff1744, #ff9100, #ffd700);
+    box-shadow: 0 0 12px #ff3d00;
+    border-radius: 6px;
+    transition: width 0.15s ease-out;
+}
+
 /* ================= BOSS 来袭红色预警栏 ================= */
 .boss-banner {
     position: absolute;

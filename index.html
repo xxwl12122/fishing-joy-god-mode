@@ -47,6 +47,18 @@
             <div class="combo-title" id="combo-title">⚡ 精彩连击 NICE! ⚡</div>
         </div>
 
+        <!-- BOSS 专属全屏史诗血条 -->
+        <div class="boss-hp-container" id="boss-hp-container">
+            <div class="boss-hp-header">
+                <span class="boss-hp-icon">🐉</span>
+                <span class="boss-hp-name">远古金龙 (BOSS)</span>
+                <span class="boss-hp-text" id="boss-hp-text">100%</span>
+            </div>
+            <div class="boss-hp-track">
+                <div class="boss-hp-fill" id="boss-hp-fill"></div>
+            </div>
+        </div>
+
         <!-- BOSS 来袭预警横幅 -->
         <div class="boss-banner" id="boss-banner">
             <div class="boss-title">⚠️ BOSS 来袭 ⚠️</div>
@@ -73,27 +85,27 @@
 
         <!-- 底部右侧特技按键栏 -->
         <div class="skills-dock">
-            <div class="skill-btn" id="skill-lock" title="瞄准锁定：精确追踪大鱼">
+            <div class="skill-btn" id="skill-lock" title="瞄准锁定：精确追踪大鱼 (快捷键: 1)">
                 <span class="skill-hotkey">1</span>
                 <span class="skill-icon">🎯</span>
                 <span class="skill-name">锁定</span>
             </div>
-            <div class="skill-btn" id="skill-auto" title="自动发炮：解放双手挂机捕鱼">
+            <div class="skill-btn" id="skill-auto" title="自动发炮：解放双手挂机捕鱼 (快捷键: 2)">
                 <span class="skill-hotkey">2</span>
                 <span class="skill-icon">🤖</span>
                 <span class="skill-name">自动</span>
             </div>
-            <div class="skill-btn" id="skill-rage" title="极速狂暴：射速翻倍 (点击开启/再次点击取消)">
+            <div class="skill-btn" id="skill-rage" title="极速狂暴：射速翻倍 (快捷键: 3)">
                 <span class="skill-hotkey">3</span>
                 <span class="skill-icon">⚡</span>
                 <span class="skill-name">狂暴</span>
             </div>
-            <div class="skill-btn" id="skill-freeze" title="冰封千里：冻结全场 (点击开启/再次点击解冻)">
+            <div class="skill-btn" id="skill-freeze" title="冰封千里：手动冻结全场/随时解冻 (快捷键: 4)">
                 <span class="skill-hotkey">4</span>
                 <span class="skill-icon">❄️</span>
                 <span class="skill-name">冰封</span>
             </div>
-            <div class="skill-btn" id="skill-laser" title="终极毁灭激光：穿透消灭直线鱼群 (能量充能)">
+            <div class="skill-btn" id="skill-laser" title="终极毁灭激光：穿透消灭直线鱼群 (快捷键: 5 / 鼠标右键)">
                 <span class="skill-hotkey">5</span>
                 <span class="skill-icon">🔮</span>
                 <span class="skill-name">激光</span>
@@ -101,11 +113,16 @@
                     <div class="laser-progress-fill" id="laser-fill"></div>
                 </div>
             </div>
+            <div class="skill-btn" id="skill-nuke" title="灭世核爆：全屏水雷瞬间毁灭所有鱼群并重创BOSS (快捷键: 6)">
+                <span class="skill-hotkey">6</span>
+                <span class="skill-icon">☢️</span>
+                <span class="skill-name">核爆</span>
+            </div>
         </div>
 
         <!-- 左下角快捷键操作提示 -->
         <div class="hotkey-hints">
-            [点击/空格] 发炮 | [滚轮/+-] 切换威力 | [1-5] 施放特技 | [H] 鱼类图鉴
+            [左键] 发炮 | [右键] 极速穿透激光 | [滚轮/+-] 切换威力 | [1-6] 施放神技 | [H] 图鉴
         </div>
 
         <!-- 鱼类图鉴模态弹窗 -->

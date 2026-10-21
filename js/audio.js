@@ -260,6 +260,37 @@ class SoundManager {
         this.playNoiseThump(0.55, 0.7);
     }
 
+    // 灭世核弹终极爆鸣音效
+    playNuke() {
+        if (!this.ctx || this.isMuted) return;
+        this.resume();
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.exponentialRampToValueAtTime(15, now + 1.2);
+
+        gain.gain.setValueAtTime(1.0, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 1.2);
+
+        this.playNoiseThump(1.0, 0.95);
+    }
+
+    // 金币暴雨连绵清脆叮当音效
+    playCoinRain() {
+        if (!this.ctx || this.isMuted) return;
+        for (let i = 0; i < 10; i++) {
+            this.playCoin(i * 0.08);
+        }
+    }
+
     // 冰封音效
     playFreeze() {
         if (!this.ctx || this.isMuted) return;

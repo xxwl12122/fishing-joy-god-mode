@@ -161,7 +161,15 @@ class GameEngine {
             if (e.button === 0) {
                 this.isMouseDown = true;
                 this.tryFire();
+            } else if (e.button === 2) {
+                // 鼠标右键一键释放极速穿透毁灭激光
+                e.preventDefault();
+                this.triggerLaserSkill();
             }
+        });
+
+        this.canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
 
         window.addEventListener('mouseup', () => {
@@ -207,6 +215,10 @@ class GameEngine {
                 case 'Digit5':
                 case 'Numpad5':
                     this.triggerLaserSkill();
+                    break;
+                case 'Digit6':
+                case 'Numpad6':
+                    this.triggerNukeSkill();
                     break;
                 case 'Equal':
                 case 'NumpadAdd':
@@ -259,12 +271,14 @@ class GameEngine {
         const skillRage = document.getElementById('skill-rage');
         const skillFreeze = document.getElementById('skill-freeze');
         const skillLaser = document.getElementById('skill-laser');
+        const skillNuke = document.getElementById('skill-nuke');
 
         if (skillLock) skillLock.addEventListener('click', () => this.toggleLockSkill());
         if (skillAuto) skillAuto.addEventListener('click', () => this.toggleAutoSkill());
         if (skillRage) skillRage.addEventListener('click', () => this.toggleRageSkill());
         if (skillFreeze) skillFreeze.addEventListener('click', () => this.toggleFreezeSkill());
         if (skillLaser) skillLaser.addEventListener('click', () => this.triggerLaserSkill());
+        if (skillNuke) skillNuke.addEventListener('click', () => this.triggerNukeSkill());
 
         const btnAlmanac = document.getElementById('btn-almanac');
         const btnSound = document.getElementById('btn-sound');
@@ -361,6 +375,38 @@ class GameEngine {
         return this.triggerLaserSkill();
     }
 
+    // 终极灭世全屏核弹神技 (快捷键 6)
+    triggerNukeSkill() {
+        this.hitstopTimer = 8;
+        if (window.particleSystem) {
+            window.particleSystem.addExplosion(this.width / 2, this.height / 2, 600, '#ff0055');
+            window.particleSystem.shake(50, 60);
+            window.particleSystem.addCoinRain(70);
+        }
+        if (window.soundManager) {
+            window.soundManager.playNuke();
+        }
+
+        let totalNukeCoins = 0;
+        const currentCost = this.cannon ? this.cannon.getCurrentConfig().cost : 1000;
+        for (const f of [...this.fishes]) {
+            if (f.isDead || f.isDying) continue;
+            if (f.type === 'golden_dragon') {
+                f.takeHit(60);
+                if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
+                if (f.hp <= 0) this.catchFish(f, currentCost);
+            } else {
+                f.takeHit(999);
+                totalNukeCoins += f.score * 80;
+                this.catchFish(f, currentCost);
+            }
+        }
+
+        if (window.uiManager) {
+            window.uiManager.showBigWin(Math.max(28888, totalNukeCoins));
+        }
+    }
+
     toggleMute() {
         if (window.soundManager) {
             const isMuted = window.soundManager.toggleMute();
@@ -443,10 +489,14 @@ class GameEngine {
             if (typeof window.soundManager.playBossAlert === 'function') window.soundManager.playBossAlert();
             else if (typeof window.soundManager.playBossWarning === 'function') window.soundManager.playBossWarning();
         }
-        if (window.uiManager) window.uiManager.showBossBanner();
         if (window.particleSystem) window.particleSystem.shake(25, 45);
 
-        this.spawnFish('golden_dragon');
+        const dragon = this.spawnFish('golden_dragon');
+        this.currentBoss = dragon;
+        if (window.uiManager) {
+            window.uiManager.showBossBanner();
+            window.uiManager.showBossHp(dragon.maxHp || 120);
+        }
 
         // 召唤 10 条剑鱼护航编队
         this.spawnSchool('swordfish', 10);
@@ -524,8 +574,19 @@ class GameEngine {
             window.particleSystem.addScore(fish.x, fish.y, `+${gainedCoins}`, fish.score >= 100);
         }
 
-        // 巨奖横幅
-        if (gainedCoins >= 3000 && window.uiManager) {
+        // 远古金龙 BOSS 专属击破奖励：全屏金币暴雨与百万大奖
+        if (fish.type === 'golden_dragon') {
+            this.currentBoss = null;
+            if (window.uiManager) {
+                window.uiManager.hideBossHp();
+                window.uiManager.showBigWin(38888);
+            }
+            if (window.particleSystem) {
+                window.particleSystem.addCoinRain(85);
+                window.particleSystem.shake(45, 60);
+                window.particleSystem.addExplosion(fish.x, fish.y, 450, '#ffd700');
+            }
+        } else if (gainedCoins >= 3000 && window.uiManager) {
             window.uiManager.showBigWin(gainedCoins);
         }
 
@@ -620,8 +681,25 @@ class GameEngine {
 
             const dist = this.distToSegment(fish.x, fish.y, x1, y1, x2, y2);
             if (dist < (fish.width * 0.45 + laserWidth)) {
-                fish.takeHit(999);
-                this.catchFish(fish, this.cannon.getCurrentConfig().cost);
+                if (window.particleSystem) {
+                    window.particleSystem.addHitSparks(fish.x, fish.y, 0xff0055);
+                }
+                if (fish.type === 'golden_dragon') {
+                    fish.takeHit(25);
+                    if (window.uiManager) {
+                        window.uiManager.updateBossHp(fish.hp, fish.maxHp);
+                    }
+                    if (window.particleSystem) {
+                        window.particleSystem.addCoin(fish.x, fish.y, 260, 35, 600, 4);
+                        window.particleSystem.addScore(fish.x, fish.y, '+600', false);
+                    }
+                    if (fish.hp <= 0) {
+                        this.catchFish(fish, this.cannon.getCurrentConfig().cost);
+                    }
+                } else {
+                    fish.takeHit(999);
+                    this.catchFish(fish, this.cannon.getCurrentConfig().cost);
+                }
             }
         }
     }
@@ -707,8 +785,26 @@ class GameEngine {
                     for (const target of this.fishes) {
                         if (target.isDead || target.isDying) continue;
                         if (target.isHit(b.x, b.y, netRadius)) {
-                            target.takeHit(999);
-                            this.catchFish(target, b.levelConfig.cost);
+                            if (window.particleSystem) {
+                                window.particleSystem.addHitSparks(target.x, target.y, b.colorNum);
+                            }
+                            if (target.type === 'golden_dragon') {
+                                const bossDmg = b.levelConfig.level >= 10 ? 15 : (b.levelConfig.level >= 6 ? 9 : 5);
+                                target.takeHit(bossDmg);
+                                if (window.uiManager) {
+                                    window.uiManager.updateBossHp(target.hp, target.maxHp);
+                                }
+                                if (window.particleSystem) {
+                                    window.particleSystem.addCoin(target.x, target.y, 260, 35, 300, 3);
+                                    window.particleSystem.addScore(target.x, target.y, '+300', false);
+                                }
+                                if (target.hp <= 0) {
+                                    this.catchFish(target, b.levelConfig.cost);
+                                }
+                            } else {
+                                target.takeHit(999);
+                                this.catchFish(target, b.levelConfig.cost);
+                            }
                         }
                     }
                     break;

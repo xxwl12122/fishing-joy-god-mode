@@ -67,9 +67,11 @@ app.whenReady().then(async () => {
                 } else if (sec === 6) {
                     g.spawnBoss();
                 } else if (sec === 7) {
-                    g.triggerBombChain(window.innerWidth / 2, window.innerHeight / 2);
+                    g.triggerNukeSkill();
                 } else if (sec === 8) {
                     g.fireLaser();
+                } else if (sec === 9) {
+                    if (window.particleSystem) window.particleSystem.addCoinRain(50);
                 }
 
                 await new Promise(r => setTimeout(r, 1000));

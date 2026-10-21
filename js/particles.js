@@ -7,6 +7,8 @@ class ParticleSystem {
     constructor() {
         this.bubbles = [];
         this.coins = [];
+        this.coinRain = [];
+        this.hitSparks = [];
         this.scores = [];
         this.nets = [];
         this.explosions = [];
@@ -28,7 +30,7 @@ class ParticleSystem {
     initPixiDisplay() {
         if (typeof PIXI === 'undefined') return;
 
-        // 背景图层
+        // 背景图层 (承载水下乱流与丁达尔神光)
         this.bgGfx = new PIXI.Graphics();
         if (window.pixiLayers && window.pixiLayers.bg) {
             window.pixiLayers.bg.addChild(this.bgGfx);
@@ -51,6 +53,8 @@ class ParticleSystem {
         this.bubbleGfx = new PIXI.Graphics();
         this.coinTrailGfx = new PIXI.Graphics();
         this.coinSpriteContainer = new PIXI.Container();
+        this.coinRainGfx = new PIXI.Graphics();
+        this.hitSparksGfx = new PIXI.Graphics();
         this.explosionGfx = new PIXI.Graphics();
         this.lightningGfx = new PIXI.Graphics();
         this.freezeGfx = new PIXI.Graphics();
@@ -59,6 +63,8 @@ class ParticleSystem {
         this.effectContainer.addChild(this.bubbleGfx);
         this.effectContainer.addChild(this.coinTrailGfx);
         this.effectContainer.addChild(this.coinSpriteContainer);
+        this.effectContainer.addChild(this.coinRainGfx);
+        this.effectContainer.addChild(this.hitSparksGfx);
         this.effectContainer.addChild(this.explosionGfx);
         this.effectContainer.addChild(this.lightningGfx);
         this.effectContainer.addChild(this.freezeGfx);
@@ -131,6 +137,42 @@ class ParticleSystem {
                 isBig: value >= 60,
                 soundIndex: i,
                 trail: []
+            });
+        }
+    }
+
+    addCoinRain(count = 70) {
+        if (window.soundManager) window.soundManager.playCoinRain();
+        const sw = window.innerWidth || 1280;
+        for (let i = 0; i < count; i++) {
+            this.coinRain.push({
+                x: Math.random() * sw,
+                y: -30 - Math.random() * 250,
+                vx: (Math.random() - 0.5) * 4,
+                vy: 5 + Math.random() * 8,
+                radius: 11 + Math.random() * 6,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.25,
+                alpha: 1,
+                life: 130
+            });
+        }
+    }
+
+    addHitSparks(x, y, colorNum = 0xffd700) {
+        if (this.hitSparks.length > 80) return;
+        const count = 5;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2.5 + Math.random() * 6;
+            this.hitSparks.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                colorNum,
+                size: 2.5 + Math.random() * 3,
+                alpha: 1,
+                decay: 0.08 + Math.random() * 0.04
             });
         }
     }
@@ -340,16 +382,61 @@ class ParticleSystem {
         } else {
             this.freezeAlpha = Math.max(0, this.freezeAlpha - 0.03);
         }
+
+        // 8. 金币暴雨物理步进
+        const sh = window.innerHeight || 720;
+        for (let i = this.coinRain.length - 1; i >= 0; i--) {
+            const cr = this.coinRain[i];
+            cr.y += cr.vy;
+            cr.x += cr.vx;
+            cr.rotation += cr.rotSpeed;
+            cr.life--;
+            if (cr.y > sh + 50 || cr.life <= 0) {
+                this.coinRain.splice(i, 1);
+            }
+        }
+
+        // 9. 受击火花粒子步进
+        for (let i = this.hitSparks.length - 1; i >= 0; i--) {
+            const hs = this.hitSparks[i];
+            hs.x += hs.vx;
+            hs.y += hs.vy;
+            hs.alpha -= hs.decay;
+            if (hs.alpha <= 0) {
+                this.hitSparks.splice(i, 1);
+            }
+        }
     }
 
     // PixiJS WebGL 硬件同步渲染管线
     syncPixi(width, height, fishCount = 0) {
         if (!this.bgGfx) return;
 
-        // 1. 深海水下乱流光斑 (背景)
+        // 1. 深海丁达尔神光 (God Rays) 与水下乱流 (背景)
         this.bgGfx.clear();
+        const t = performance.now() * 0.0007;
+        const numRays = 7;
+        for (let r = 0; r < numRays; r++) {
+            const rayPhase = r * 0.95 + t;
+            const sway = Math.sin(rayPhase) * 55;
+            const alpha = 0.035 + Math.sin(t * 1.8 + r * 1.3) * 0.02;
+            const topX = (width * (r + 0.5)) / numRays + sway * 0.4;
+            const topW = 30 + Math.sin(t + r) * 12;
+            const botX = topX + sway * 2.4;
+            const botW = topW * 4.2;
+
+            this.bgGfx.beginFill(0x80deea, alpha);
+            this.bgGfx.drawPolygon([
+                topX - topW * 0.5, 0,
+                topX + topW * 0.5, 0,
+                botX + botW * 0.5, height,
+                botX - botW * 0.5, height
+            ]);
+            this.bgGfx.endFill();
+        }
+
         if (fishCount > 50) {
-            this.bgGfx.beginFill(0x0088cc, 0.08);
+            this.bgGfx.beginFill(0x0088cc, 0.06);
             this.bgGfx.drawRect(0, 0, width, height);
             this.bgGfx.endFill();
         }
@@ -457,7 +544,30 @@ class ParticleSystem {
             }
         }
 
-        // 8. 3D 旋转金币 Pixi 精灵同步
+        // 8. 全屏金币暴雨渲染
+        if (this.coinRainGfx) {
+            this.coinRainGfx.clear();
+            for (const cr of this.coinRain) {
+                this.coinRainGfx.beginFill(0xffd700, cr.alpha * 0.95);
+                this.coinRainGfx.drawCircle(cr.x, cr.y, cr.radius);
+                this.coinRainGfx.endFill();
+
+                this.coinRainGfx.lineStyle(2, 0xffea00, cr.alpha);
+                this.coinRainGfx.drawCircle(cr.x, cr.y, cr.radius * 0.65);
+            }
+        }
+
+        // 9. 受击火花喷溅渲染
+        if (this.hitSparksGfx) {
+            this.hitSparksGfx.clear();
+            for (const hs of this.hitSparks) {
+                this.hitSparksGfx.beginFill(hs.colorNum, hs.alpha);
+                this.hitSparksGfx.drawCircle(hs.x, hs.y, hs.size);
+                this.hitSparksGfx.endFill();
+            }
+        }
+
+        // 10. 3D 旋转金币 Pixi 精灵同步
         this.syncPixiCoins();
     }
 
