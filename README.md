@@ -4,6 +4,14 @@
 
 ---
 
+### 📥 桌面程序直链下载 (Releases)
+
+[![Download Windows EXE](https://img.shields.io/badge/Windows_EXE-立即下载免安装版(254MB)-brightgreen?style=for-the-badge&logo=windows)](https://github.com/xxwl12122/fishing-joy-god-mode/releases/download/v1.0.0/FishingJoy-v1.0.0-Windows-x64.zip)
+
+> 💡 **下载说明**：点击上方按钮下载 `FishingJoy-v1.0.0-Windows-x64.zip`，解压后双击运行 **`FishingJoy.exe`** 或 **`捕鱼达人.exe`** 即可直接全屏畅玩！无需配置任何运行环境。
+
+---
+
 ## ⚡ 无敌破解版专属特性 (GOD MODE)
 
 - 🪙 **无限金币储备**：开局 **999,999,999** 金币，发炮开火 **0 扣除**，永远挥霍不尽！
