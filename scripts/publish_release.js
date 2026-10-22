@@ -17,8 +17,10 @@ function getGitHubToken() {
 
 function curlApi(url, method = 'GET', data = null, extraHeaders = []) {
     const token = getGitHubToken();
+    const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || 'http://127.0.0.1:7897';
     const args = [
-        '--proxy', 'http://127.0.0.1:7897',
+        '-k',
+        '--proxy', proxy,
         '-s', '-S',
         '-X', method,
         '-H', `Authorization: Bearer ${token}`,
@@ -77,12 +79,24 @@ async function main() {
         release = curlApi(`https://api.github.com/repos/${owner}/${repo}/releases`, 'POST', {
             tag_name: tag,
             target_commitish: 'main',
-            name: `${tag} - 捕鱼达人 (Fishing Joy) ⚡ 无限无敌破解版 (Windows EXE)`,
-            body: `## 🌊 捕鱼达人 (Fishing Joy) - ⚡ 无限无敌破解版 (GOD MODE)
+            name: `${tag} - 捕鱼达人 (Fishing Joy) ⚡ 四大史诗级BOSS重塑·商业街机级 (Windows EXE)`,
+            body: `## 🌊 捕鱼达人 (Fishing Joy) ${tag} - 官方商业街机级大版本升级 (GOD MODE)
 
-### 🎮 Windows 桌面绿色免安装版
-- 下载下方 **Assets** 中的 \`${zipName}\`
-- 解压后双击 \`FishingJoy.exe\` 或 \`捕鱼达人.exe\` 即可直接全屏畅玩！无需安装任何环境！`,
+### 🌟 v2.0.0 重大更新亮点
+1. **四大史诗级 BOSS 官方商业街机级 3D 重塑**：
+   - 🐉 **远古五爪金龙 (\`golden_dragon\`)**：24 节 3D 鎏金鳞甲骨肉动态蛇形链接，4 只游动划水龙爪内嵌关节，尾部凤羽烈焰与龙首自转神珠。
+   - 💀 **九幽魔煞幽冥骨龙 (\`phantom_dragon\`)**：深渊骸骨质感，幽蓝冥火光芒，4 爪附带幽冥魂火与深渊冥核。
+   - 🦈 **机械泰坦·终结巨鲨 (\`mecha_shark\`)**：钛合金重装战甲，双层 WebGL 渲染管线（底层三阶等离子火箭喷焰 + 顶层全息红外激光扫描视锥）。
+   - 🐙 **深海巨妖·克拉肯 (\`kraken\`)**：深渊暗影墨雾光环与涌动符文阵，双侧摄魂金瞳强光神芒。
+2. **打击感与动画体系完备**：
+   - 全体 BOSS 及其关节挂件均支持子弹打击绯红受击闪光 (\`0xff2244\`) 与平滑渐隐退场动画。
+   - 开局 5 秒首出 + 每 3~4 分钟深海狂暴循环，支持随时按 [B] 键或点击技能栏一键召唤。
+3. **极速轻量绿色免安装**：
+   - 完整体积仅约 15 MB，双击即玩。
+
+### 🎮 快速开始
+- 下载下方 **Assets** 中的 \`${zipName}\`。
+- 解压后双击 \`FishingJoy.exe\` 即可直接全屏畅玩！无需安装任何外部环境。`,
             draft: false,
             prerelease: false
         });
@@ -106,8 +120,10 @@ async function main() {
     console.log(`Uploading asset ${zipName} (${(zipStats.size / (1024 * 1024)).toFixed(2)} MB)...`);
     const uploadUrl = `https://uploads.github.com/repos/${owner}/${repo}/releases/${release.id}/assets?name=${encodeURIComponent(zipName)}`;
 
+    const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || 'http://127.0.0.1:7897';
     const uploadArgs = [
-        '--proxy', 'http://127.0.0.1:7897',
+        '-k',
+        '--proxy', proxy,
         '-s', '-S',
         '-X', 'POST',
         '-H', `Authorization: Bearer ${token}`,

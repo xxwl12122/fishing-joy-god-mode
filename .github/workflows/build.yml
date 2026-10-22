@@ -1,0 +1,80 @@
+name: Build and Release Windows EXE
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version from package.json
+        id: get_version
+        shell: pwsh
+        run: |
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $ver = $pkg.version
+          Write-Output "VERSION=v$ver" >> $env:GITHUB_ENV
+          Write-Output "TAG_NAME=v$ver" >> $env:GITHUB_OUTPUT
+          Write-Output "RAW_VER=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Package Windows EXE
+        run: npm run package
+
+      - name: Compress Distribution into ZIP
+        shell: pwsh
+        run: |
+          $zipName = "FishingJoy-${{ env.VERSION }}-Windows-x64.zip"
+          tar -acf $zipName -C dist/FishingJoy-win32-x64 .
+          Write-Output "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+          $size = (Get-Item $zipName).Length / 1MB
+          Write-Host ("Created ZIP: {0} ({1:N2} MB)" -f $zipName, $size)
+
+      - name: Publish or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.TAG_NAME }}
+          name: "${{ steps.get_version.outputs.TAG_NAME }} - 捕鱼达人 (Fishing Joy) · 商业街机版 (Windows EXE)"
+          body: |
+            ## 🌊 捕鱼达人 (Fishing Joy) ${{ steps.get_version.outputs.TAG_NAME }} - 商业街机级大版本 (GOD MODE)
+
+            ### 🌟 本次构建与更新亮点
+            - **四大史诗级 BOSS 3D 视觉与骨肉动力学**：
+              - 🐉 **远古五爪金龙**：24 节 3D 鎏金鳞甲骨肉动态蛇形链接，4 爪游动划水，烈焰凤羽尾鳍，龙首自转神珠。
+              - 💀 **九幽魔煞幽冥骨龙**：深渊骸骨质感，幽蓝冥火，4 幽冥骨爪，深渊冥核。
+              - 🦈 **机械泰坦·终结巨鲨**：钛合金重装战甲，双层 WebGL 光效（底层等离子火箭尾焰 + 顶层全息红外激光扫射视锥）。
+              - 🐙 **深海巨妖·克拉肯**：多层深渊墨雾光环与涌动符文阵，双侧摄魂金瞳强光神芒。
+            - **受击与动画完备**：全关节高饱和绯红受击闪光与平滑渐隐退场动画。
+            - **自动构建与绿色免安装**：基于 GitHub Actions 自动化编译打包，解压即玩。
+
+            ### 🎮 快速开始
+            1. 下载下方 **Assets** 中的 `${{ env.ZIP_NAME }}`。
+            2. 解压后直接双击 `FishingJoy.exe` 即可畅玩！无需安装任何外部环境。
+          files: |
+            ${{ env.ZIP_NAME }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
