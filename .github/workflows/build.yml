@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-and-release
+  cancel-in-progress: false
+
 jobs:
   build-and-release:
     runs-on: windows-latest
@@ -58,7 +62,7 @@ jobs:
           tag_name: ${{ steps.get_version.outputs.TAG_NAME }}
           name: "${{ steps.get_version.outputs.TAG_NAME }} - 捕鱼达人 (Fishing Joy) · 商业街机版 (Windows EXE)"
           body: |
-            ## 🌊 捕鱼达人 (Fishing Joy) ${{ steps.get_version.outputs.TAG_NAME }} - 商业街机级大版本 (GOD MODE)
+            ## 🌊 捕鱼达人 (Fishing Joy) ${{ steps.get_version.outputs.TAG_NAME }} - 性能优化与商业街机版 (GOD MODE)
 
             ### 🌟 本次构建与更新亮点
             - **四大史诗级 BOSS 3D 视觉与骨肉动力学**：
@@ -66,7 +70,10 @@ jobs:
               - 💀 **九幽魔煞幽冥骨龙**：深渊骸骨质感，幽蓝冥火，4 幽冥骨爪，深渊冥核。
               - 🦈 **机械泰坦·终结巨鲨**：钛合金重装战甲，双层 WebGL 光效（底层等离子火箭尾焰 + 顶层全息红外激光扫射视锥）。
               - 🐙 **深海巨妖·克拉肯**：多层深渊墨雾光环与涌动符文阵，双侧摄魂金瞳强光神芒。
-            - **受击与动画完备**：全关节高饱和绯红受击闪光与平滑渐隐退场动画。
+            - **战斗平衡与打击感优化**：
+              - 核弹灭世、炸弹鱼和闪电链专属连携平衡，对四大 BOSS 正确造成巨额范围爆发伤害并刷新血条，根除秒杀异常。
+            - **渲染与动力学性能深度优化**：
+              - 神龙 24 节骨骼动力学坐标计算点池化复用（零 GC 压力），大幅减少垃圾回收抖动，60 FPS 流畅满帧。
             - **自动构建与绿色免安装**：基于 GitHub Actions 自动化编译打包，解压即玩。
 
             ### 🎮 快速开始

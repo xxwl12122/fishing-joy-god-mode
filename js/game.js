@@ -449,8 +449,8 @@ class GameEngine {
         const currentCost = this.cannon ? this.cannon.getCurrentConfig().cost : 1000;
         for (const f of [...this.fishes]) {
             if (f.isDead || f.isDying) continue;
-            if (f.type === 'golden_dragon') {
-                f.takeHit(60);
+            if (f.config && f.config.isBoss) {
+                f.takeHit(160);
                 if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
                 if (f.hp <= 0) this.catchFish(f, currentCost);
             } else {
@@ -709,8 +709,14 @@ class GameEngine {
             if (f.isDead || f.isDying) continue;
             const dist = Math.hypot(f.x - bx, f.y - by);
             if (dist <= bombRadius) {
-                f.takeHit(999);
-                this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                if (f.config && f.config.isBoss) {
+                    f.takeHit(60);
+                    if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
+                    if (f.hp <= 0) this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                } else {
+                    f.takeHit(999);
+                    this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                }
             }
         }
     }
@@ -746,8 +752,14 @@ class GameEngine {
 
             for (const f of struck) {
                 if (f !== startFish) {
-                    f.takeHit(999);
-                    this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                    if (f.config && f.config.isBoss) {
+                        f.takeHit(45);
+                        if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
+                        if (f.hp <= 0) this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                    } else {
+                        f.takeHit(999);
+                        this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                    }
                 }
             }
         }

@@ -615,15 +615,20 @@ class Fish {
         };
 
         const segCount = this.segments.length;
-        const pts = [];
+        if (!this._dragonPts) {
+            this._dragonPts = [];
+        }
         for (let i = 0; i < segCount; i++) {
             const s = this.segments[i];
-            pts.push({
-                x: s.x - this.x,
-                y: s.y - this.y,
-                angle: s.angle
-            });
+            if (!this._dragonPts[i]) {
+                this._dragonPts[i] = { x: 0, y: 0, angle: 0 };
+            }
+            const p = this._dragonPts[i];
+            p.x = s.x - this.x;
+            p.y = s.y - this.y;
+            p.angle = s.angle;
         }
+        const pts = this._dragonPts;
 
         const tint = isFlashing ? 0xff2244 : 0xffffff;
         const alpha = this.isDying ? Math.max(0, 1 - this.deathProgress * 0.8) : 1;
