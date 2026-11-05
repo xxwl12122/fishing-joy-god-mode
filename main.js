@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
+const { callDeepSeekTaunt } = require('./ai_boss_service');
 
 function createWindow() {
     // 隐藏默认菜单栏
@@ -21,6 +22,7 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js'),
             backgroundThrottling: false // 确保后台不掉帧
         }
     });
@@ -46,6 +48,11 @@ function createWindow() {
         }
     });
 }
+
+// 注册 AI 暴躁 BOSS 吐槽通信通道
+ipcMain.handle('ai-boss-taunt', async (event, data) => {
+    return await callDeepSeekTaunt(data);
+});
 
 // 应用程序就绪后创建窗口
 app.whenReady().then(() => {

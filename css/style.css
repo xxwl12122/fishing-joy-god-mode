@@ -828,3 +828,179 @@ canvas#gameCanvas {
     z-index: 10;
     letter-spacing: 0.5px;
 }
+
+/* ==========================================================================
+   AI 暴躁深海 BOSS 动态吐槽咆哮气泡
+   ========================================================================== */
+#ai-boss-bubble-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.ai-boss-bubble {
+    position: absolute;
+    min-width: 220px;
+    max-width: 380px;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, rgba(20, 0, 10, 0.94) 0%, rgba(45, 10, 20, 0.92) 100%);
+    border: 2px solid #ff1744;
+    border-radius: 16px;
+    box-shadow: 0 0 25px rgba(255, 23, 68, 0.7), inset 0 0 15px rgba(255, 215, 0, 0.25);
+    color: #fff;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.6) translateY(20px);
+    transition: opacity 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0.25s;
+    backdrop-filter: blur(8px);
+}
+
+.ai-boss-bubble.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -100%) scale(1);
+    animation: bossRoarShake 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes bossRoarShake {
+    0% { transform: translate(-50%, -100%) scale(1) rotate(-1deg); }
+    100% { transform: translate(-50%, -100%) scale(1.03) rotate(1.2deg); }
+}
+
+.boss-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #ffd700;
+    border-bottom: 1px dashed rgba(255, 215, 0, 0.35);
+    padding-bottom: 5px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.boss-voice-wave {
+    margin-left: auto;
+    font-size: 11px;
+    color: #ff5252;
+    animation: voiceBlink 0.8s infinite alternate;
+}
+
+@keyframes voiceBlink {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+.boss-bubble-text {
+    font-size: 18px;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1.35;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 12px #ff1744;
+}
+
+/* ==========================================================================
+   Three.js 3D 第一人称海底场景 & 准星 UI
+   ========================================================================== */
+#three-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    display: none; /* 默认 2D，切换后激活 */
+    cursor: crosshair;
+}
+
+#three-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* 屏幕中央瞄准准星 (Crosshair) */
+#crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+    transition: transform 0.08s ease-out;
+}
+
+#crosshair.active {
+    display: block;
+}
+
+#crosshair.firing {
+    transform: translate(-50%, -50%) scale(1.35);
+}
+
+.crosshair-circle {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 2px solid rgba(0, 229, 255, 0.85);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.6), inset 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.crosshair-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    background: #ff1744;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px #ff1744;
+}
+
+.crosshair-line {
+    position: absolute;
+    background: rgba(0, 229, 255, 0.9);
+}
+
+.crosshair-line.top { top: -6px; left: 50%; width: 2px; height: 6px; transform: translateX(-50%); }
+.crosshair-line.bottom { bottom: -6px; left: 50%; width: 2px; height: 6px; transform: translateX(-50%); }
+.crosshair-line.left { left: -6px; top: 50%; width: 6px; height: 2px; transform: translateY(-50%); }
+.crosshair-line.right { right: -6px; top: 50%; width: 6px; height: 2px; transform: translateY(-50%); }
+
+/* 3D 视角切换按钮与锁定提示 */
+.view-switch-btn {
+    background: linear-gradient(135deg, #00e5ff 0%, #0077ff 100%);
+    color: #fff;
+    font-weight: 800;
+    border: 1px solid #80deea;
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+}
+
+.fps-hint-badge {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(1, 20, 37, 0.85);
+    border: 1px solid #00e5ff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #80deea;
+    z-index: 99;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.5px;
+}
+

@@ -665,8 +665,13 @@ class GameEngine {
         // 金币收益
         const gainedCoins = fish.score * cannonCost;
         this.coins += gainedCoins;
+        this.score += gainedCoins;
         if (window.uiManager) {
             window.uiManager.updateCoins(this.coins);
+            window.uiManager.updateScore(this.score);
+        }
+        if (window.aiBoss && this.currentBoss) {
+            window.aiBoss.onScoreMilestone(this.score, this.currentBoss);
         }
 
         // 震屏与金币飞行
@@ -815,6 +820,9 @@ class GameEngine {
                     if (window.uiManager) {
                         window.uiManager.updateBossHp(fish.hp, fish.maxHp);
                     }
+                    if (window.aiBoss) {
+                        window.aiBoss.onBossHit(fish, this.score);
+                    }
                     if (window.particleSystem) {
                         window.particleSystem.shake(3.0, 5);
                         window.particleSystem.addHitSparks(fish.x, fish.y, 0xffd700);
@@ -924,6 +932,9 @@ class GameEngine {
                                 }
                                 if (window.uiManager) {
                                     window.uiManager.updateBossHp(target.hp, target.maxHp);
+                                }
+                                if (window.aiBoss) {
+                                    window.aiBoss.onBossHit(target, this.score);
                                 }
                                 if (window.particleSystem) {
                                     window.particleSystem.shake(3.5, 6);

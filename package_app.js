@@ -6,6 +6,8 @@ const path = require('path');
 const allowedPrefixes = [
   '/index.html',
   '/main.js',
+  '/preload.js',
+  '/ai_boss_service.js',
   '/package.json',
   '/css',
   '/js',

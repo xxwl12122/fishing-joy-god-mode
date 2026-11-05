@@ -37,6 +37,7 @@
             </div>
 
             <div class="top-buttons">
+                <button class="icon-btn view-switch-btn" id="btn-3d-toggle" title="切换 3D 第一人称深海 / 2D 街机 (快捷键: V)" style="font-size: 13px; font-weight: bold; width: auto; padding: 0 12px; border-radius: 20px;">🥽 3D视角</button>
                 <button class="icon-btn" id="btn-almanac" title="鱼类图鉴 (快捷键: H)">📖</button>
                 <button class="icon-btn" id="btn-sound" title="静音切换 (快捷键: M)">🔊</button>
                 <button class="icon-btn" id="btn-settings" title="系统设置">⚙️</button>
@@ -135,7 +136,7 @@
 
         <!-- 左下角快捷键操作提示 -->
         <div class="hotkey-hints">
-            [左键] 发炮 | [右键] 极速穿透激光 | [滚轮/+-] 换炮 | [1-6] 神技 | [B] 召唤BOSS | [H] 图鉴
+            [左键] 发炮 | [右键] 极速穿透激光 | [滚轮/+-] 换炮 | [1-6] 神技 | [B] 召唤BOSS | [H] 图鉴 | [V] 3D视角
         </div>
 
         <!-- 鱼类图鉴模态弹窗 -->
@@ -205,12 +206,15 @@
 
     <!-- 脚本加载 -->
     <script src="js/pixi.min.js"></script>
+    <script src="js/three.bundle.js"></script>
     <script src="js/assets.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/ai_boss.js"></script>
     <script src="js/particles.js"></script>
     <script src="js/fish.js"></script>
     <script src="js/cannon.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/three_scene.js"></script>
     <script src="js/game.js"></script>
 </body>
 </html>
