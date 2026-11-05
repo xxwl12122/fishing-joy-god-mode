@@ -25,7 +25,11 @@ class ParticleSystem {
         this.redAlertTimer = 0;
         this.goldFlashAlpha = 0;
 
+        // 3D 金币对象池与高性能粒子缓存
+        this.coinPool = [];
         this.coinSpritePool = [];
+        this.coinRainSpritePool = [];
+        this.coinAbsorbSparks = [];
 
         this.initSeaweeds();
         this.initPixiDisplay();
@@ -53,12 +57,13 @@ class ParticleSystem {
             window.pixiLayers.net.addChild(this.netGfx);
         }
 
-        // 综合特效图层
+        // 综合特效图层 (各层深度与视觉通道精细排序)
         this.effectContainer = new PIXI.Container();
         this.bubbleGfx = new PIXI.Graphics();
         this.coinTrailGfx = new PIXI.Graphics();
         this.coinSpriteContainer = new PIXI.Container();
-        this.coinRainGfx = new PIXI.Graphics();
+        this.coinRainContainer = new PIXI.Container();
+        this.coinAbsorbGfx = new PIXI.Graphics();
         this.hitSparksGfx = new PIXI.Graphics();
         this.explosionGfx = new PIXI.Graphics();
         this.lightningGfx = new PIXI.Graphics();
@@ -69,7 +74,8 @@ class ParticleSystem {
         this.effectContainer.addChild(this.bubbleGfx);
         this.effectContainer.addChild(this.coinTrailGfx);
         this.effectContainer.addChild(this.coinSpriteContainer);
-        this.effectContainer.addChild(this.coinRainGfx);
+        this.effectContainer.addChild(this.coinRainContainer);
+        this.effectContainer.addChild(this.coinAbsorbGfx);
         this.effectContainer.addChild(this.hitSparksGfx);
         this.effectContainer.addChild(this.explosionGfx);
         this.effectContainer.addChild(this.lightningGfx);
@@ -127,34 +133,73 @@ class ParticleSystem {
     }
 
     addCoin(startX, startY, targetX, targetY, value = 10, count = null) {
-        if (this.coins.length >= 450) return;
-        // 如果传入了固定数量则优先使用（大鱼至少 20 枚），否则按分数比例计算
-        const coinCount = count !== null ? count : Math.min(Math.max(5, Math.floor(value / 5)), 28);
+        if (this.coins.length >= 350) return;
+        // 如果传入了固定数量则优先使用，否则按分数比例计算 (大鱼更多，但总量控制在极致流畅区间)
+        const coinCount = count !== null ? count : Math.min(Math.max(5, Math.floor(value / 5)), 26);
         for (let i = 0; i < coinCount; i++) {
             const spreadAngle = Math.random() * Math.PI * 2;
-            const spreadDist = 30 + Math.random() * 95;
+            const spreadDist = 28 + Math.random() * 88;
             const burstX = startX + Math.cos(spreadAngle) * spreadDist;
             const burstY = startY + Math.sin(spreadAngle) * spreadDist;
 
-            this.coins.push({
-                x: startX,
-                y: startY,
-                startX: startX,
-                startY: startY,
-                burstX: burstX,
-                burstY: burstY,
-                targetX: targetX,
-                targetY: targetY,
-                progress: 0,
-                speed: 0.022 + Math.random() * 0.016,
-                delay: i * 1.8,
-                rotation: Math.random() * Math.PI * 2,
-                rotSpeed: 0.2 + Math.random() * 0.15,
-                size: 18 + (value >= 100 ? 10 : (value >= 40 ? 5 : 0)),
-                isBig: value >= 40,
-                soundIndex: i % 10,
-                trail: []
-            });
+            // 弧形二次贝塞尔曲线控制点：从爆破点到目标点添加向外/向上的抛物弧度
+            const midX = (burstX + targetX) * 0.5;
+            const midY = (burstY + targetY) * 0.5;
+            const dx = targetX - burstX;
+            const dy = targetY - burstY;
+            const dist = Math.hypot(dx, dy) || 1;
+            const normX = -dy / dist;
+            const normY = dx / dist;
+            const curveOffset = (Math.random() - 0.25) * 110;
+            const ctrlX = midX + normX * curveOffset;
+            const ctrlY = Math.min(midY - 55, midY + normY * curveOffset);
+
+            const isBig = value >= 40;
+            const baseScale = value >= 100 ? 0.72 : (value >= 40 ? 0.62 : 0.52);
+
+            let c = this.coinPool.pop();
+            if (!c) {
+                c = {
+                    x: startX, y: startY,
+                    startX, startY,
+                    burstX, burstY,
+                    ctrlX, ctrlY,
+                    targetX, targetY,
+                    progress: 0,
+                    speed: 0.024 + Math.random() * 0.014,
+                    delay: i * 1.4,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: 0.24 + Math.random() * 0.16,
+                    baseScale,
+                    currentScale: baseScale,
+                    isBig,
+                    soundIndex: i % 12,
+                    trail: []
+                };
+            } else {
+                c.x = startX;
+                c.y = startY;
+                c.startX = startX;
+                c.startY = startY;
+                c.burstX = burstX;
+                c.burstY = burstY;
+                c.ctrlX = ctrlX;
+                c.ctrlY = ctrlY;
+                c.targetX = targetX;
+                c.targetY = targetY;
+                c.progress = 0;
+                c.speed = 0.024 + Math.random() * 0.014;
+                c.delay = i * 1.4;
+                c.rotation = Math.random() * Math.PI * 2;
+                c.rotSpeed = 0.24 + Math.random() * 0.16;
+                c.baseScale = baseScale;
+                c.currentScale = baseScale;
+                c.isBig = isBig;
+                c.soundIndex = i % 12;
+                c.trail.length = 0;
+            }
+
+            this.coins.push(c);
         }
     }
 
@@ -163,54 +208,109 @@ class ParticleSystem {
         this.triggerGoldFlash(0.85);
         this.shake(45, 60);
         this.addExplosion(startX, startY, 520, '#ffd700');
-        this.addCoinRain(100);
+        this.addCoinRain(65);
 
         const sw = window.innerWidth || 1280;
         const sh = window.innerHeight || 720;
-        const count = 100;
+        const count = 75; // 精确平衡震撼视觉与 60 满帧性能
 
         for (let i = 0; i < count; i++) {
             const spreadAngle = Math.random() * Math.PI * 2;
-            const spreadDist = 140 + Math.random() * (Math.min(sw, sh) * 0.48);
+            const spreadDist = 120 + Math.random() * (Math.min(sw, sh) * 0.42);
             const burstX = Math.max(60, Math.min(sw - 60, startX + Math.cos(spreadAngle) * spreadDist));
             const burstY = Math.max(60, Math.min(sh - 60, startY + Math.sin(spreadAngle) * spreadDist));
 
-            this.coins.push({
-                x: startX,
-                y: startY,
-                startX: startX,
-                startY: startY,
-                burstX: burstX,
-                burstY: burstY,
-                targetX: targetX,
-                targetY: targetY,
-                progress: 0,
-                speed: 0.016 + Math.random() * 0.014,
-                delay: Math.floor(i * 1.2),
+            const midX = (burstX + targetX) * 0.5;
+            const midY = (burstY + targetY) * 0.5;
+            const dx = targetX - burstX;
+            const dy = targetY - burstY;
+            const dist = Math.hypot(dx, dy) || 1;
+            const normX = -dy / dist;
+            const normY = dx / dist;
+            const curveOffset = (Math.random() - 0.2) * 140;
+            const ctrlX = midX + normX * curveOffset;
+            const ctrlY = Math.min(midY - 70, midY + normY * curveOffset);
+
+            let c = this.coinPool.pop();
+            if (!c) {
+                c = {
+                    x: startX, y: startY,
+                    startX, startY,
+                    burstX, burstY,
+                    ctrlX, ctrlY,
+                    targetX, targetY,
+                    progress: 0,
+                    speed: 0.018 + Math.random() * 0.014,
+                    delay: Math.floor(i * 1.1),
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: 0.25 + Math.random() * 0.18,
+                    baseScale: 0.68,
+                    currentScale: 0.68,
+                    isBig: true,
+                    soundIndex: i % 12,
+                    trail: []
+                };
+            } else {
+                c.x = startX;
+                c.y = startY;
+                c.startX = startX;
+                c.startY = startY;
+                c.burstX = burstX;
+                c.burstY = burstY;
+                c.ctrlX = ctrlX;
+                c.ctrlY = ctrlY;
+                c.targetX = targetX;
+                c.targetY = targetY;
+                c.progress = 0;
+                c.speed = 0.018 + Math.random() * 0.014;
+                c.delay = Math.floor(i * 1.1);
+                c.rotation = Math.random() * Math.PI * 2;
+                c.rotSpeed = 0.25 + Math.random() * 0.18;
+                c.baseScale = 0.68;
+                c.currentScale = 0.68;
+                c.isBig = true;
+                c.soundIndex = i % 12;
+                c.trail.length = 0;
+            }
+
+            this.coins.push(c);
+        }
+    }
+
+    // 全屏 3D 旋转金币雨
+    addCoinRain(count = 50) {
+        if (window.soundManager) window.soundManager.playCoinRain();
+        const sw = window.innerWidth || 1280;
+        const actualCount = Math.min(count, 55);
+        for (let i = 0; i < actualCount; i++) {
+            this.coinRain.push({
+                x: Math.random() * sw,
+                y: -30 - Math.random() * 260,
+                vx: (Math.random() - 0.5) * 3,
+                vy: 6.5 + Math.random() * 8.5,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: 0.22 + Math.random() * 0.18,
-                size: 26,
-                isBig: true,
-                soundIndex: i % 12,
-                trail: []
+                rotSpeed: 0.22 + (Math.random() - 0.5) * 0.16,
+                scale: 0.45 + Math.random() * 0.25,
+                alpha: 1,
+                life: 120
             });
         }
     }
 
-    addCoinRain(count = 70) {
-        if (window.soundManager) window.soundManager.playCoinRain();
-        const sw = window.innerWidth || 1280;
+    // 金币飞入 UI 计分板时产生的吸入吸收金色冲击星芒
+    addCoinAbsorbSparks(x, y) {
+        if (this.coinAbsorbSparks.length > 50) return;
+        const count = 3;
         for (let i = 0; i < count; i++) {
-            this.coinRain.push({
-                x: Math.random() * sw,
-                y: -30 - Math.random() * 250,
-                vx: (Math.random() - 0.5) * 5,
-                vy: 6 + Math.random() * 9,
-                radius: 12 + Math.random() * 8,
-                rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.3,
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 3.5;
+            this.coinAbsorbSparks.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 2.5 + Math.random() * 2.5,
                 alpha: 1,
-                life: 140
+                decay: 0.12 + Math.random() * 0.06
             });
         }
     }
@@ -374,7 +474,7 @@ class ParticleSystem {
             }
         }
 
-        // 4. 金币
+        // 4. 金币 (抛物线二次贝塞尔曲线 + 3D 旋转 + 距离透视缩放 + O(1) 池化回收)
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const c = this.coins[i];
             if (c.delay > 0) {
@@ -385,14 +485,25 @@ class ParticleSystem {
             c.rotation += c.rotSpeed;
 
             if (c.progress < 0.25) {
+                // 阶段 1：向外爆发散开 (带有真实物理爆发反冲缓动)
                 const burstT = c.progress / 0.25;
-                c.x = c.startX + (c.burstX - c.startX) * Math.sin(burstT * Math.PI * 0.5);
-                c.y = c.startY + (c.burstY - c.startY) * Math.sin(burstT * Math.PI * 0.5);
+                const easeOut = Math.sin(burstT * Math.PI * 0.5);
+                c.x = c.startX + (c.burstX - c.startX) * easeOut;
+                c.y = c.startY + (c.burstY - c.startY) * easeOut;
+                c.currentScale = c.baseScale * (1 + easeOut * 0.35); // 爆开时金币迎面飞来变大
             } else {
-                const flyT = (c.progress - 0.25) / 0.75;
-                const easeT = flyT * flyT * (3 - 2 * flyT);
-                c.x = c.burstX + (c.targetX - c.burstX) * easeT;
-                c.y = c.burstY + (c.targetY - c.burstY) * easeT;
+                // 阶段 2：二次贝塞尔曲线抛物线弧形磁吸飞向左上角计分板
+                const t = (c.progress - 0.25) / 0.75;
+                const easeT = t * t * (3 - 2 * t); // Smoothstep 磁吸加速
+                const invT = 1 - easeT;
+
+                c.x = invT * invT * c.burstX + 2 * invT * easeT * c.ctrlX + easeT * easeT * c.targetX;
+                c.y = invT * invT * c.burstY + 2 * invT * easeT * c.ctrlY + easeT * easeT * c.targetY;
+                c.currentScale = c.baseScale * (1.35 - easeT * 0.55); // 飞向远端UI平滑距离缩放
+
+                // 记录拖尾历史坐标 (取最近 4 个位置，形成华丽流星尾迹)
+                if (c.trail.length >= 4) c.trail.shift();
+                c.trail.push({ x: c.x, y: c.y });
             }
 
             if (c.progress >= 1) {
@@ -402,7 +513,30 @@ class ParticleSystem {
                 if (window.uiManager) {
                     window.uiManager.triggerCoinBounce();
                 }
-                this.coins.splice(i, 1);
+
+                // 终点金币吸入金色爆破火花
+                this.addCoinAbsorbSparks(c.targetX, c.targetY);
+
+                // O(1) 快速对象池回收，彻底根除 splice 导致的大数组内存重排与 GC 卡顿
+                this.coinPool.push(c);
+                const last = this.coins.pop();
+                if (i < this.coins.length) {
+                    this.coins[i] = last;
+                }
+            }
+        }
+
+        // 金币入池吸收星芒步进
+        for (let i = this.coinAbsorbSparks.length - 1; i >= 0; i--) {
+            const sp = this.coinAbsorbSparks[i];
+            sp.x += sp.vx;
+            sp.y += sp.vy;
+            sp.alpha -= sp.decay;
+            if (sp.alpha <= 0) {
+                const last = this.coinAbsorbSparks.pop();
+                if (i < this.coinAbsorbSparks.length) {
+                    this.coinAbsorbSparks[i] = last;
+                }
             }
         }
 
@@ -448,7 +582,10 @@ class ParticleSystem {
             cr.rotation += cr.rotSpeed;
             cr.life--;
             if (cr.y > sh + 50 || cr.life <= 0) {
-                this.coinRain.splice(i, 1);
+                const last = this.coinRain.pop();
+                if (i < this.coinRain.length) {
+                    this.coinRain[i] = last;
+                }
             }
         }
 
@@ -604,20 +741,19 @@ class ParticleSystem {
             }
         }
 
-        // 8. 全屏金币暴雨渲染
-        if (this.coinRainGfx) {
-            this.coinRainGfx.clear();
-            for (const cr of this.coinRain) {
-                this.coinRainGfx.beginFill(0xffd700, cr.alpha * 0.95);
-                this.coinRainGfx.drawCircle(cr.x, cr.y, cr.radius);
-                this.coinRainGfx.endFill();
+        // 8. 绚丽金色星芒流光拖尾渲染 (Golden Particle Sparkle Trail)
+        this.renderCoinTrails();
 
-                this.coinRainGfx.lineStyle(2, 0xffea00, cr.alpha);
-                this.coinRainGfx.drawCircle(cr.x, cr.y, cr.radius * 0.65);
-            }
-        }
+        // 9. 3D 旋转金币 Pixi 精灵同步 (带透视缩放与动态高光)
+        this.syncPixiCoins();
 
-        // 9. 受击火花喷溅渲染
+        // 10. 金币飞入 UI 计分板入池吸入金色星芒爆破渲染
+        this.renderCoinAbsorbSparks();
+
+        // 11. 全屏 3D 旋转金币暴雨渲染 (真 3D 贴图翻滚下落，彻底告别单色小黄圆)
+        this.syncPixiCoinRain();
+
+        // 12. 受击火花喷溅渲染
         if (this.hitSparksGfx) {
             this.hitSparksGfx.clear();
             for (const hs of this.hitSparks) {
@@ -627,10 +763,7 @@ class ParticleSystem {
             }
         }
 
-        // 10. 3D 旋转金币 Pixi 精灵同步
-        this.syncPixiCoins();
-
-        // 11. 全屏红色预警脉冲与全屏金光闪烁渲染
+        // 13. 全屏红色预警脉冲与全屏金光闪烁渲染
         if (this.screenOverlayGfx) {
             this.screenOverlayGfx.clear();
             if (this.redAlertTimer > 0) {
@@ -658,10 +791,64 @@ class ParticleSystem {
         }
     }
 
+    // 绚丽金色流星拖尾 (彗星流线渐变衰减 + 核心炽白流光 + 尾尖星芒)
+    renderCoinTrails() {
+        if (!this.coinTrailGfx) return;
+        this.coinTrailGfx.clear();
+
+        for (let i = 0; i < this.coins.length; i++) {
+            const c = this.coins[i];
+            if (c.delay > 0 || c.progress < 0.22 || !c.trail || c.trail.length < 2) continue;
+
+            const isGold = c.isBig;
+            const glowColor = isGold ? 0xffd700 : 0x00e5ff;
+            const segCount = c.trail.length;
+
+            // 1. 金色渐变彗尾：从尾尖向币身逐渐加粗、透明度递增
+            for (let j = 0; j < segCount - 1; j++) {
+                const p1 = c.trail[j];
+                const p2 = c.trail[j + 1];
+                const ratio = (j + 1) / segCount; // 0.25 -> 1.0
+                this.coinTrailGfx.lineStyle(1.0 + ratio * 3.0, glowColor, ratio * 0.45);
+                this.coinTrailGfx.moveTo(p1.x, p1.y);
+                this.coinTrailGfx.lineTo(p2.x, p2.y);
+            }
+
+            // 2. 衔接币身的核心炽白流光
+            const lastPt = c.trail[segCount - 1];
+            this.coinTrailGfx.lineStyle(2.2, 0xffffff, 0.8);
+            this.coinTrailGfx.moveTo(lastPt.x, lastPt.y);
+            this.coinTrailGfx.lineTo(c.x, c.y);
+
+            // 3. 尾尖闪烁金色微粒星芒
+            const tailPt = c.trail[0];
+            this.coinTrailGfx.lineStyle(0);
+            this.coinTrailGfx.beginFill(glowColor, 0.5);
+            this.coinTrailGfx.drawCircle(tailPt.x, tailPt.y, 1.8);
+            this.coinTrailGfx.endFill();
+        }
+    }
+
+    // 金币吸入左上角计分板的金色爆破星芒
+    renderCoinAbsorbSparks() {
+        if (!this.coinAbsorbGfx) return;
+        this.coinAbsorbGfx.clear();
+        for (const sp of this.coinAbsorbSparks) {
+            this.coinAbsorbGfx.beginFill(0xffd700, sp.alpha * 0.7);
+            this.coinAbsorbGfx.drawCircle(sp.x, sp.y, sp.size * 1.5);
+            this.coinAbsorbGfx.endFill();
+
+            this.coinAbsorbGfx.beginFill(0xffffff, sp.alpha);
+            this.coinAbsorbGfx.drawCircle(sp.x, sp.y, sp.size * 0.7);
+            this.coinAbsorbGfx.endFill();
+        }
+    }
+
+    // 3D 旋转金币 Pixi 精灵同步 (带透视缩放与动态高光)
     syncPixiCoins() {
         if (!this.coinSpriteContainer) return;
 
-        // 确保精灵池数量匹配
+        // 精灵池根据活跃金币数量动态扩容并池化复用
         while (this.coinSpritePool.length < this.coins.length) {
             const spr = new PIXI.Sprite();
             spr.anchor.set(0.5, 0.5);
@@ -669,6 +856,7 @@ class ParticleSystem {
             this.coinSpritePool.push(spr);
         }
 
+        const bTex = window.pixiTextures && window.pixiTextures.coins;
         for (let i = 0; i < this.coinSpritePool.length; i++) {
             const spr = this.coinSpritePool[i];
             if (i < this.coins.length) {
@@ -681,14 +869,49 @@ class ParticleSystem {
                 spr.x = c.x;
                 spr.y = c.y;
 
-                const textures = (window.pixiTextures && window.pixiTextures.coins) ? (c.isBig ? window.pixiTextures.coins.gold : window.pixiTextures.coins.silver) : null;
+                const textures = bTex ? (c.isBig ? bTex.gold : bTex.silver) : null;
                 if (textures && textures.length > 0) {
-                    const frameIdx = Math.abs(Math.floor(c.rotation * 3.5)) % textures.length;
+                    const frameIdx = Math.abs(Math.floor(c.rotation * 3.6)) % textures.length;
                     spr.texture = textures[frameIdx];
-                    const cSize = c.size * 1.6;
-                    spr.width = cSize;
-                    spr.height = cSize;
                 }
+
+                // 直接设置 scale 替代设置 width/height，消除内部矩阵分解重算卡顿
+                const s = c.currentScale || c.baseScale || 0.55;
+                spr.scale.set(s, s);
+            } else {
+                spr.visible = false;
+            }
+        }
+    }
+
+    // 全屏 3D 金币暴雨 Pixi 精灵同步 (真·3D金币翻滚雨)
+    syncPixiCoinRain() {
+        if (!this.coinRainContainer) return;
+
+        while (this.coinRainSpritePool.length < this.coinRain.length) {
+            const spr = new PIXI.Sprite();
+            spr.anchor.set(0.5, 0.5);
+            this.coinRainContainer.addChild(spr);
+            this.coinRainSpritePool.push(spr);
+        }
+
+        const bTex = window.pixiTextures && window.pixiTextures.coins;
+        const goldTextures = bTex ? bTex.gold : null;
+
+        for (let i = 0; i < this.coinRainSpritePool.length; i++) {
+            const spr = this.coinRainSpritePool[i];
+            if (i < this.coinRain.length) {
+                const cr = this.coinRain[i];
+                spr.visible = true;
+                spr.x = cr.x;
+                spr.y = cr.y;
+
+                if (goldTextures && goldTextures.length > 0) {
+                    const frameIdx = Math.abs(Math.floor(cr.rotation * 3.2)) % goldTextures.length;
+                    spr.texture = goldTextures[frameIdx];
+                }
+                spr.scale.set(cr.scale, cr.scale);
+                spr.alpha = Math.min(1, cr.life / 30);
             } else {
                 spr.visible = false;
             }

@@ -340,24 +340,33 @@ class GameEngine {
 
         const btnAlmanac = document.getElementById('btn-almanac');
         const btnSound = document.getElementById('btn-sound');
+        const btnModalMute = document.getElementById('btn-modal-mute');
         const btnSettings = document.getElementById('btn-settings');
         const btnFullscreen = document.getElementById('btn-fullscreen');
 
         if (btnAlmanac) btnAlmanac.addEventListener('click', () => window.uiManager.openAlmanac());
         if (btnSound) btnSound.addEventListener('click', () => this.toggleMute());
+        if (btnModalMute) btnModalMute.addEventListener('click', () => this.toggleMute());
         if (btnSettings) btnSettings.addEventListener('click', () => window.uiManager.openSettings());
         if (btnFullscreen) btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
 
         const sfxSlider = document.getElementById('sfx-slider');
         const bgmSlider = document.getElementById('bgm-slider');
+        const sfxVal = document.getElementById('sfx-val');
+        const bgmVal = document.getElementById('bgm-val');
+
         if (sfxSlider) {
             sfxSlider.addEventListener('input', (e) => {
-                if (window.soundManager) window.soundManager.setSfxVolume(parseFloat(e.target.value));
+                const val = parseFloat(e.target.value);
+                if (window.soundManager) window.soundManager.setSfxVolume(val);
+                if (sfxVal) sfxVal.innerText = `${Math.round(val * 100)}%`;
             });
         }
         if (bgmSlider) {
             bgmSlider.addEventListener('input', (e) => {
-                if (window.soundManager) window.soundManager.setBgmVolume(parseFloat(e.target.value));
+                const val = parseFloat(e.target.value);
+                if (window.soundManager) window.soundManager.setBgmVolume(val);
+                if (bgmVal) bgmVal.innerText = `${Math.round(val * 100)}%`;
             });
         }
     }
@@ -470,6 +479,13 @@ class GameEngine {
             const isMuted = window.soundManager.toggleMute();
             const btn = document.getElementById('btn-sound');
             if (btn) btn.innerText = isMuted ? '🔇' : '🔊';
+
+            const modalBtn = document.getElementById('btn-modal-mute');
+            if (modalBtn) {
+                modalBtn.innerText = isMuted ? '🔇 已静音' : '🔊 声音开启';
+                modalBtn.style.borderColor = isMuted ? '#ff1744' : '#00e5ff';
+                modalBtn.style.background = isMuted ? 'rgba(255, 23, 68, 0.2)' : 'rgba(0, 229, 255, 0.15)';
+            }
         }
     }
 
@@ -594,6 +610,15 @@ class GameEngine {
 
     tryFire() {
         if (!this.cannon) return;
+
+        // 首次发炮交互，自动激活音频引擎并开启背景音乐
+        if (window.soundManager) {
+            window.soundManager.resume();
+            if (!window.soundManager.isBgmPlaying && !window.soundManager.isMuted) {
+                window.soundManager.startBgm();
+            }
+        }
+
         const cost = this.cannon.getCurrentConfig().cost;
 
         if (this.isLockMode && (!this.lockedFish || this.lockedFish.isDead || this.lockedFish.isDying)) {

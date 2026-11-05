@@ -10,7 +10,8 @@ const allowedPrefixes = [
   '/css',
   '/js',
   '/images',
-  '/assets'
+  '/assets',
+  '/src'
 ];
 
 function shouldIgnore(file) {

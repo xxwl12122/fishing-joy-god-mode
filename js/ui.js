@@ -105,12 +105,20 @@ class UIManager {
         }
     }
 
-    // 金币飞入 UI 栏受击弹性缩放震颤反馈
+    // 金币飞入 UI 栏受击弹性缩放震颤反馈 (节流 + rAF 优化，杜绝同步强制回流重绘卡顿)
     triggerCoinBounce() {
         if (!this.coinPillEl) return;
+        const now = performance.now();
+        if (this._lastCoinBounceTime && now - this._lastCoinBounceTime < 75) {
+            return;
+        }
+        this._lastCoinBounceTime = now;
         this.coinPillEl.classList.remove('bounce-hit');
-        void this.coinPillEl.offsetWidth; // 触发回流重绘
-        this.coinPillEl.classList.add('bounce-hit');
+        requestAnimationFrame(() => {
+            if (this.coinPillEl) {
+                this.coinPillEl.classList.add('bounce-hit');
+            }
+        });
     }
 
     // 屏幕上方连击数 (Combo) 炫酷展示

@@ -191,17 +191,17 @@
                 }
             }
 
-            // 5. 3D 旋转金币与银币纹理 (各 10 帧切片)
-            const coin1Img = this.get('coinAni1');
-            if (coin1Img) {
-                const base = PIXI.BaseTexture.from(coin1Img);
+            // 5. 3D 旋转金币与银币纹理 (各 10 帧切片: coinAni2 为璀璨金币 10，coinAni1 为银币 1)
+            const coinGoldImg = this.get('coinAni2');
+            if (coinGoldImg) {
+                const base = PIXI.BaseTexture.from(coinGoldImg);
                 for (let f = 0; f < 10; f++) {
                     window.pixiTextures.coins.gold.push(new PIXI.Texture(base, new PIXI.Rectangle(0, f * 60, 60, 60)));
                 }
             }
-            const coin2Img = this.get('coinAni2');
-            if (coin2Img) {
-                const base = PIXI.BaseTexture.from(coin2Img);
+            const coinSilverImg = this.get('coinAni1');
+            if (coinSilverImg) {
+                const base = PIXI.BaseTexture.from(coinSilverImg);
                 for (let f = 0; f < 10; f++) {
                     window.pixiTextures.coins.silver.push(new PIXI.Texture(base, new PIXI.Rectangle(0, f * 60, 60, 60)));
                 }
