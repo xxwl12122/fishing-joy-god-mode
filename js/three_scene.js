@@ -860,13 +860,13 @@ class DeepSea3DScene {
         }
     }
 
-    // 3D 鱼类受击反应
+    // 3D 鱼类受击反应 (⚡ 无敌破解版：一炮必死 999999 伤害！)
     onFishHit(fish, hitPoint) {
         // 生成 3D 金色火花爆破
         this.createHitExplosion(hitPoint);
 
-        // 扣血
-        fish.hp -= 35;
+        // ⚡ 一炮必死秒杀切菜
+        fish.hp = 0;
 
         // 闪红受击反馈
         fish.group.traverse(child => {
@@ -881,29 +881,42 @@ class DeepSea3DScene {
 
         // 击中 BOSS 触发 AI 暴躁吐槽
         if (fish.isBoss && window.aiBoss) {
-            const currentScore = (window.gameEngine && window.gameEngine.score) || 999999;
+            const currentScore = (window.gameEngine && window.gameEngine.score) || 999999999;
             window.aiBoss.onBossHit(fish, currentScore);
         }
 
-        // 击杀结算
-        if (fish.hp <= 0) {
-            this.catchFish3D(fish);
-        }
+        // 立即触发击杀结算
+        this.catchFish3D(fish);
     }
 
-    // 捕获 3D 鱼类
+    // 捕获 3D 鱼类 (海量爆币 + 画面震颤 + UI联动)
     catchFish3D(fish) {
         if (window.soundManager) {
             window.soundManager.playCatch(fish.score);
-            window.soundManager.playCoin(1);
+            window.soundManager.playCoin(3);
         }
 
-        // 同步 2D 游戏金币与得分
+        const gainedCoins = (fish.score || 50) * (fish.isBoss ? 200 : 80);
+
+        // 同步 2D 游戏金币与得分 (无敌破解版：999,999,999 持续暴涨)
         if (window.gameEngine) {
-            window.gameEngine.score += fish.score * 10;
+            window.gameEngine.coins = (window.gameEngine.coins || 999999999) + gainedCoins;
+            window.gameEngine.score = (window.gameEngine.score || 999999999) + gainedCoins;
             if (window.uiManager) {
-                window.uiManager.updateScore(window.gameEngine.score);
+                window.uiManager.updateCoins(window.gameEngine.coins);
+                if (typeof window.uiManager.updateScore === 'function') {
+                    window.uiManager.updateScore(window.gameEngine.coins);
+                }
             }
+        }
+
+        // 触发金币爆散粒子与屏幕震颤
+        if (window.particleSystem) {
+            const screenX = window.innerWidth / 2;
+            const screenY = window.innerHeight / 2;
+            window.particleSystem.addCoin(screenX, screenY, 260, 35, gainedCoins, fish.isBoss ? 12 : 6);
+            window.particleSystem.shake(fish.isBoss ? 5.0 : 3.0, 8);
+            window.particleSystem.addScore(screenX, screenY - 50, `+${gainedCoins}`, true);
         }
 
         // 3D 击杀消散动画

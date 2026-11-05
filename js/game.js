@@ -14,6 +14,7 @@ class GameEngine {
 
         // 玩家资产与状态 (无敌破解版：无限金币与钻石)
         this.coins = 999999999;
+        this.score = 999999999;
         this.diamonds = 99999;
         this.isFrozen = false;
         this.freezeTimer = 0;
@@ -458,15 +459,13 @@ class GameEngine {
         const currentCost = this.cannon ? this.cannon.getCurrentConfig().cost : 1000;
         for (const f of [...this.fishes]) {
             if (f.isDead || f.isDying) continue;
-            if (f.config && f.config.isBoss) {
-                f.takeHit(160);
-                if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
-                if (f.hp <= 0) this.catchFish(f, currentCost);
-            } else {
-                f.takeHit(999);
-                totalNukeCoins += f.score * 80;
-                this.catchFish(f, currentCost);
+            // ⚡ 无敌破解版：核弹全屏秒杀一切 BOSS 与鱼群！
+            f.takeHit(999999);
+            if (f.config && f.config.isBoss && window.uiManager) {
+                window.uiManager.updateBossHp(0, f.maxHp);
             }
+            totalNukeCoins += (f.score || 50) * 120;
+            this.catchFish(f, currentCost);
         }
 
         if (window.uiManager) {
@@ -662,13 +661,15 @@ class GameEngine {
             }
         }
 
-        // 金币收益
-        const gainedCoins = fish.score * cannonCost;
-        this.coins += gainedCoins;
-        this.score += gainedCoins;
+        // 金币收益 (无敌破解版：金币永不减，海量爆币)
+        const gainedCoins = (fish.score || 10) * Math.max(100, cannonCost * 10);
+        this.coins = (this.coins || 999999999) + gainedCoins;
+        this.score = (this.score || 999999999) + gainedCoins;
         if (window.uiManager) {
             window.uiManager.updateCoins(this.coins);
-            window.uiManager.updateScore(this.score);
+            if (typeof window.uiManager.updateScore === 'function') {
+                window.uiManager.updateScore(this.coins);
+            }
         }
         if (window.aiBoss && this.currentBoss) {
             window.aiBoss.onScoreMilestone(this.score, this.currentBoss);
@@ -739,14 +740,12 @@ class GameEngine {
             if (f.isDead || f.isDying) continue;
             const dist = Math.hypot(f.x - bx, f.y - by);
             if (dist <= bombRadius) {
-                if (f.config && f.config.isBoss) {
-                    f.takeHit(60);
-                    if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
-                    if (f.hp <= 0) this.catchFish(f, this.cannon.getCurrentConfig().cost);
-                } else {
-                    f.takeHit(999);
-                    this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                // ⚡ 无敌破解版：炸弹鱼一炮必死！
+                f.takeHit(999999);
+                if (f.config && f.config.isBoss && window.uiManager) {
+                    window.uiManager.updateBossHp(0, f.maxHp);
                 }
+                this.catchFish(f, this.cannon.getCurrentConfig().cost);
             }
         }
     }
@@ -782,14 +781,12 @@ class GameEngine {
 
             for (const f of struck) {
                 if (f !== startFish) {
-                    if (f.config && f.config.isBoss) {
-                        f.takeHit(45);
-                        if (window.uiManager) window.uiManager.updateBossHp(f.hp, f.maxHp);
-                        if (f.hp <= 0) this.catchFish(f, this.cannon.getCurrentConfig().cost);
-                    } else {
-                        f.takeHit(999);
-                        this.catchFish(f, this.cannon.getCurrentConfig().cost);
+                    // ⚡ 无敌破解版：闪电链一炮必死！
+                    f.takeHit(999999);
+                    if (f.config && f.config.isBoss && window.uiManager) {
+                        window.uiManager.updateBossHp(0, f.maxHp);
                     }
+                    this.catchFish(f, this.cannon.getCurrentConfig().cost);
                 }
             }
         }
@@ -812,30 +809,18 @@ class GameEngine {
                 if (window.particleSystem) {
                     window.particleSystem.addHitSparks(fish.x, fish.y, 0xff0055);
                 }
+                // ⚡ 无敌破解版：极速穿透激光一炮必死！直接秒杀任何 BOSS 与大鱼
+                fish.takeHit(999999);
                 if (fish.config && fish.config.isBoss) {
-                    fish.takeHit(35);
-                    if (window.soundManager) {
-                        window.soundManager.playBossHit();
-                    }
-                    if (window.uiManager) {
-                        window.uiManager.updateBossHp(fish.hp, fish.maxHp);
-                    }
-                    if (window.aiBoss) {
-                        window.aiBoss.onBossHit(fish, this.score);
-                    }
+                    if (window.soundManager) window.soundManager.playBossHit();
+                    if (window.uiManager) window.uiManager.updateBossHp(0, fish.maxHp);
+                    if (window.aiBoss) window.aiBoss.onBossHit(fish, this.score);
                     if (window.particleSystem) {
-                        window.particleSystem.shake(3.0, 5);
+                        window.particleSystem.shake(4.0, 8);
                         window.particleSystem.addHitSparks(fish.x, fish.y, 0xffd700);
-                        window.particleSystem.addCoin(fish.x, fish.y, 260, 35, 600, 4);
-                        window.particleSystem.addScore(fish.x, fish.y, '+600', false);
                     }
-                    if (fish.hp <= 0) {
-                        this.catchFish(fish, this.cannon.getCurrentConfig().cost);
-                    }
-                } else {
-                    fish.takeHit(999);
-                    this.catchFish(fish, this.cannon.getCurrentConfig().cost);
                 }
+                this.catchFish(fish, this.cannon.getCurrentConfig().cost);
             }
         }
     }
@@ -924,31 +909,18 @@ class GameEngine {
                             if (window.particleSystem) {
                                 window.particleSystem.addHitSparks(target.x, target.y, b.colorNum);
                             }
+                            // ⚡ 无敌破解版：主炮子弹一炮必死！直接打满 999999 真实伤害秒杀一切！
+                            target.takeHit(999999);
                             if (target.config && target.config.isBoss) {
-                                const bossDmg = b.levelConfig.level >= 10 ? 25 : (b.levelConfig.level >= 6 ? 16 : 10);
-                                target.takeHit(bossDmg);
-                                if (window.soundManager) {
-                                    window.soundManager.playBossHit();
-                                }
-                                if (window.uiManager) {
-                                    window.uiManager.updateBossHp(target.hp, target.maxHp);
-                                }
-                                if (window.aiBoss) {
-                                    window.aiBoss.onBossHit(target, this.score);
-                                }
+                                if (window.soundManager) window.soundManager.playBossHit();
+                                if (window.uiManager) window.uiManager.updateBossHp(0, target.maxHp);
+                                if (window.aiBoss) window.aiBoss.onBossHit(target, this.score);
                                 if (window.particleSystem) {
-                                    window.particleSystem.shake(3.5, 6);
+                                    window.particleSystem.shake(4.5, 10);
                                     window.particleSystem.addHitSparks(target.x, target.y, 0xffd700);
-                                    window.particleSystem.addCoin(target.x, target.y, 260, 35, 300, 3);
-                                    window.particleSystem.addScore(target.x, target.y, '+300', false);
                                 }
-                                if (target.hp <= 0) {
-                                    this.catchFish(target, b.levelConfig.cost);
-                                }
-                            } else {
-                                target.takeHit(999);
-                                this.catchFish(target, b.levelConfig.cost);
                             }
+                            this.catchFish(target, b.levelConfig.cost);
                         }
                     }
                     break;

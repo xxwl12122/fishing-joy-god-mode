@@ -30,9 +30,9 @@ class UIManager {
         this.rescueModal = document.getElementById('rescue-modal');
         this.settingsModal = document.getElementById('settings-modal');
 
-        this.displayedCoins = 0;
-        this.targetCoins = 1000;
-        this.displayedDiamonds = 50;
+        this.displayedCoins = 999999999;
+        this.targetCoins = 999999999;
+        this.displayedDiamonds = 99999;
 
         // 点击遮罩背景关闭弹窗
         [this.almanacModal, this.settingsModal].forEach(modal => {
@@ -53,6 +53,12 @@ class UIManager {
         if (instant) {
             this.displayedCoins = amount;
             if (this.coinEl) this.coinEl.innerText = this.displayedCoins.toLocaleString();
+        }
+    }
+
+    updateScore(amount) {
+        if (amount && !isNaN(amount)) {
+            this.updateCoins(amount);
         }
     }
 
